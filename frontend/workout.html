@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Workout Tracker — fitnesSHARE</title>
+<meta name="description" content="Log workouts, generate AI plans, track sets and reps with plateau detection.">
+<link rel="stylesheet" href="/css/global.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+.ai-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.exercise-row{display:grid;grid-template-columns:2fr 80px 80px 100px 80px 44px;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--card-border);}
+.exercise-row:last-child{border-bottom:none;}
+.set-dots{display:flex;gap:4px;flex-wrap:wrap;}
+.mood-btn{padding:8px 14px;border-radius:var(--radius-sm);border:1px solid var(--card-border);background:var(--card);cursor:pointer;font-size:1.1rem;transition:var(--transition);}
+.mood-btn.selected{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-glow);}
+.plan-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:var(--transition);}
+.plan-card:hover{border-color:var(--primary);transform:translateY(-2px);}
+.plan-card.active-plan{border-color:var(--green);background:rgba(16,185,129,0.05);}
+.plateau-alert{background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.3);border-radius:var(--radius-sm);padding:14px;margin-top:12px;}
+@media(max-width:700px){.ai-form-grid{grid-template-columns:1fr;}.exercise-row{grid-template-columns:1fr 1fr 1fr;gap:6px;}}
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="theme-toggle" title="Toggle dark/light mode">
+  <span id="theme-toggle-icon">🌙</span>
+</button>
+<div id="toast-container"></div>
+
+<nav class="navbar">
+  <a href="/dashboard" class="nav-logo">fitnesSHARE</a>
+  <div class="nav-links">
+    <a href="/dashboard" class="nav-link"> Home</a>
+    <a href="/workout" class="nav-link active"> Workout</a>
+    <a href="/diet" class="nav-link"> Diet</a>
+    <a href="/social" class="nav-link"> Social</a>
+    <a href="/ai" class="nav-link"> AI Coach</a>
+    <a href="/profile" class="nav-link"> Profile</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="app-layout">
+    <aside class="sidebar">
+      <a href="/dashboard" class="sidebar-link"><span class="icon"></span>Dashboard</a>
+      <a href="/workout" class="sidebar-link active"><span class="icon"></span>Workout</a>
+      <a href="/diet" class="sidebar-link"><span class="icon"></span>Diet</a>
+      <a href="/social" class="sidebar-link"><span class="icon"></span>Social Feed</a>
+      <a href="/ai" class="sidebar-link"><span class="icon"></span>AI Coach</a>
+      <a href="/duo" class="sidebar-link"><span class="icon"></span>Duo Streaks</a>
+      <a href="/leaderboard" class="sidebar-link"><span class="icon"></span>Leaderboard</a>
+      <a href="/profile" class="sidebar-link"><span class="icon"></span>Profile</a>
+    </aside>
+<script>
+// Theme toggle logic
+const themeToggle = document.getElementById('theme-toggle');
+const themeIcon = document.getElementById('theme-toggle-icon');
+function setTheme(theme) {
+  if (theme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    themeIcon.textContent = '☀️';
+    localStorage.setItem('theme', 'light');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    themeIcon.textContent = '🌙';
+    localStorage.setItem('theme', 'dark');
+  }
+}
+themeToggle.onclick = () => {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  setTheme(isLight ? 'dark' : 'light');
+};
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme === 'light') setTheme('light');
+</script>
+    <main class="main-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+        <div><h1>💪 Workout Tracker</h1><p class="text-muted" style="margin-top:4px;">Log sessions, manage plans, track progress</p></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-outline" id="freeze-btn" onclick="useFreeze()">🛡️ Use Freeze (<span id="freeze-count">?</span>)</button>
+          <button class="btn btn-outline" onclick="showCreateModal()">📝 Create Manual Plan</button>
+          <button class="btn btn-primary" onclick="showTab('log')" id="tab-log-btn">+ Log Today</button>
+        </div>
+      </div>
+
+      <!-- Tab Bar -->
+      <div class="tab-bar" style="margin-bottom:24px;">
+        <button class="tab-btn active" id="tab-plans" onclick="showTab('plans')">📋 My Plans</button>
+        <button class="tab-btn" id="tab-log" onclick="showTab('log')">+ Log Session</button>
+        <button class="tab-btn" id="tab-ai" onclick="showTab('ai')">🤖 AI Generate</button>
+        <button class="tab-btn" id="tab-history" onclick="showTab('history')">📊 History</button>
+        <button class="tab-btn" id="tab-public" onclick="showTab('public')">🌐 Community Plans</button>
+      </div>
+
+      <!-- PLANS TAB -->
+      <div id="pane-plans">
+        <div id="plans-list"><div class="loader"></div></div>
+      </div>
+
+      <!-- LOG SESSION TAB -->
+      <div id="pane-log" style="display:none;">
+        <div class="card">
+          <h2 style="margin-bottom:20px;">📝 Log Today's Session</h2>
+          <div class="grid-2" style="margin-bottom:16px;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">Day / Focus</label>
+              <input type="text" id="log-day" class="form-input" placeholder="e.g. Push Day – Chest & Triceps">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Duration (min)</label>
+              <input type="number" id="log-duration" class="form-input" placeholder="45" min="1">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:16px;">
+            <label class="form-label">Notes</label>
+            <textarea id="log-notes" class="form-textarea" rows="2" placeholder="How did it go? Any observations..."></textarea>
+          </div>
+
+          <div class="form-group" style="margin-bottom:20px;">
+            <label class="form-label">Mood</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;" id="mood-btns">
+              <button class="mood-btn" data-mood="terrible" onclick="setMood('terrible')">😞 Terrible</button>
+              <button class="mood-btn" data-mood="bad" onclick="setMood('bad')">😐 Bad</button>
+              <button class="mood-btn selected" data-mood="okay" onclick="setMood('okay')">😊 Okay</button>
+              <button class="mood-btn" data-mood="good" onclick="setMood('good')">💪 Good</button>
+              <button class="mood-btn" data-mood="great" onclick="setMood('great')">🔥 Great</button>
+            </div>
+          </div>
+
+          <div style="margin-bottom:12px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <h3>Exercises</h3>
+              <button class="btn btn-outline btn-sm" onclick="addExerciseRow()">+ Add Exercise</button>
+            </div>
+            <div style="font-size:0.78rem;color:var(--text-muted);display:grid;grid-template-columns:2fr 100px 100px 100px 80px 44px;gap:8px;padding:0 0 8px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">
+              <span>Name</span><span>Target</span><span>Completed</span><span>Weight (lbs)</span><span>Unit</span><span></span>
+            </div>
+            <div id="exercises-container"></div>
+          </div>
+
+          <button class="btn btn-primary btn-lg" id="submit-log-btn" onclick="submitLog()">✅ Submit Workout Log</button>
+        </div>
+
+        <!-- Plateau / Success -->
+        <div id="log-result" style="margin-top:16px;"></div>
+      </div>
+
+      <!-- AI GENERATE TAB -->
+      <div id="pane-ai" style="display:none;">
+        <div class="card">
+          <h2 style="margin-bottom:4px;">🤖 AI Workout Plan Generator</h2>
+          <p class="text-muted" style="margin-bottom:24px;font-size:0.88rem;">Grok AI creates a personalized plan based on your profile.</p>
+          <div class="ai-form-grid">
+            <div class="form-group">
+              <label class="form-label">Primary Goal</label>
+              <select id="ai-goal" class="form-select">
+                <option value="Muscle Building">💪 Muscle Building</option>
+                <option value="Fat Loss">🔥 Fat Loss</option>
+                <option value="Strength">⚡ Strength</option>
+                <option value="Endurance">🏃 Endurance</option>
+                <option value="General Fitness">🌟 General Fitness</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fitness Level</label>
+              <select id="ai-level" class="form-select">
+                <option value="beginner">Beginner</option>
+                <option value="intermediate" selected>Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Days Per Week</label>
+              <select id="ai-days" class="form-select">
+                <option value="3">3 days</option>
+                <option value="4">4 days</option>
+                <option value="5" selected>5 days</option>
+                <option value="6">6 days</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Equipment Available</label>
+              <select id="ai-equipment" class="form-select">
+                <option value="Full gym">Full Gym</option>
+                <option value="Dumbbells only">Dumbbells Only</option>
+                <option value="Bodyweight only">Bodyweight Only</option>
+                <option value="Home gym (limited)">Home Gym</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Age</label>
+              <input type="number" id="ai-age" class="form-input" placeholder="25" min="13" max="80">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Weight (lbs)</label>
+              <input type="number" id="ai-weight" class="form-input" placeholder="175">
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:16px;">
+            <label class="form-label">Injuries / Limitations (optional)</label>
+            <input type="text" id="ai-injuries" class="form-input" placeholder="e.g. bad lower back, avoid heavy squats">
+          </div>
+          <button class="btn btn-primary btn-lg" style="margin-top:20px;" id="ai-gen-btn" onclick="generateAIPlan()">
+            🤖 Generate My Plan
+          </button>
+          <div id="ai-plan-preview" style="margin-top:24px;"></div>
+        </div>
+      </div>
+
+      <!-- HISTORY TAB -->
+      <div id="pane-history" style="display:none;">
+        <div class="card">
+          <div class="section-header">
+            <h2>📊 Workout History</h2>
+          </div>
+          <div id="history-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;text-align:center;">
+            <div class="stat-card"><div class="stat-label">Total Sessions</div><div class="stat-value gradient" id="h-sessions">—</div></div>
+            <div class="stat-card"><div class="stat-label">Avg Completion</div><div class="stat-value gradient" id="h-avg">—</div></div>
+            <div class="stat-card"><div class="stat-label">Total Sets</div><div class="stat-value gradient" id="h-sets">—</div></div>
+          </div>
+          <div class="card" style="margin-bottom:24px;padding:20px;">
+            <h3 style="margin-bottom:16px;">📈 Progress Trend (Last 30 Days)</h3>
+            <canvas id="progressChart" height="120"></canvas>
+          </div>
+          <div id="history-list"></div>
+        </div>
+      </div>
+
+      <!-- PUBLIC PLANS TAB -->
+      <div id="pane-public" style="display:none;">
+        <div class="grid-2" id="public-plans-list"><div class="loader"></div></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Plan Editor Modal -->
+<div id="plan-modal" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:800px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h2 id="modal-title">Create Workout Plan</h2>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Plan Title</label>
+      <input type="text" id="m-title" class="form-input" placeholder="e.g. 5-Day Hypertrophy">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea id="m-desc" class="form-textarea" rows="2" placeholder="Describe your plan..."></textarea>
+    </div>
+    <div class="grid-2" style="margin-bottom:16px;">
+      <div class="form-group">
+        <label class="form-label">Difficulty</label>
+        <select id="m-diff" class="form-select">
+          <option value="beginner">Beginner</option>
+          <option value="intermediate" selected>Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Public Plan?</label>
+        <div style="padding:10px 0;">
+          <input type="checkbox" id="m-public" checked> <label for="m-public">Show in Community Plans</label>
+        </div>
+      </div>
+    </div>
+    <div id="m-days-container"></div>
+    <button class="btn btn-outline btn-block" style="margin-top:12px;" onclick="addDayToModal()">+ Add Training Day</button>
+    <div style="display:flex;gap:12px;margin-top:24px;">
+      <button class="btn btn-primary btn-block" onclick="saveManualPlan()">Save Plan</button>
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+requireAuth();
+let currentMood = 'okay';
+let myPlans = [];
+let activePlanId = null;
+let editingPlanId = null;
+let progressChart = null;
+
+async function init() {
+  const me = await api('GET', '/users/me');
+  activePlanId = me.activeWorkoutPlan?._id || me.activeWorkoutPlan || null;
+  document.getElementById('freeze-count').textContent = me.streakFreezes ?? 0;
+  loadPlans();
+  checkTodayLog();
+}
+
+async function checkTodayLog() {
+  try {
+    const log = await api('GET', '/workout/log/today');
+    if (log) {
+      document.getElementById('tab-log-btn').innerHTML = `✅ Logged Today (${log.progressPercent}%)`;
+      document.getElementById('tab-log-btn').classList.replace('btn-primary', 'btn-green');
+    }
+  } catch(e) {}
+}
+
+async function loadPlans() {
+  try {
+    myPlans = await api('GET', '/workout/plans');
+    const cont = document.getElementById('plans-list');
+    if (!myPlans.length) {
+      cont.innerHTML = `<div class="empty-state"><div class="icon">💪</div><p>No workout plans yet</p>
+        <button class="btn btn-primary" onclick="showTab('ai')" style="margin-top:12px;">Generate AI Plan</button></div>`;
+      return;
+    }
+    cont.innerHTML = `<div class="grid-2">${myPlans.map(p => `
+      <div class="plan-card ${p._id === activePlanId ? 'active-plan' : ''}" id="plan-${p._id}">
+        <div style="display:flex;align-items:start;justify-content:space-between;margin-bottom:10px;">
+          <div>
+            <div style="font-weight:700;font-size:1rem;">${p.title}</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px;">${p.source} · ${p.difficulty}</div>
+          </div>
+          ${p._id === activePlanId ? '<span class="tag">✅ Active</span>' : ''}
+        </div>
+        <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px;">${p.description || ''}</div>
+        <div style="font-size:0.8rem;margin-bottom:12px;">${p.days?.map(d => `<span class="plan-day-chip" style="margin-bottom:4px;">${d.dayName}</span>`).join(' ') || ''}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" onclick="setActivePlan('${p._id}')">Set Active</button>
+          <button class="btn btn-outline btn-sm" onclick="editPlan('${p._id}')">Edit</button>
+          <button class="btn btn-outline btn-sm" onclick="loadLogFromPlan('${p._id}')">+ Log Session</button>
+        </div>
+      </div>`).join('')}</div>`;
+  } catch(e) { toast('Failed to load plans', 'error'); }
+}
+
+async function setActivePlan(planId) {
+  try {
+    await api('PUT', '/users/me', { activeWorkoutPlan: planId });
+    activePlanId = planId;
+    toast('Active plan updated! 💪', 'success');
+    loadPlans();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function showCreateModal() {
+  editingPlanId = null;
+  document.getElementById('modal-title').textContent = 'Create Workout Plan';
+  document.getElementById('m-title').value = '';
+  document.getElementById('m-desc').value = '';
+  document.getElementById('m-days-container').innerHTML = '';
+  addDayToModal();
+  document.getElementById('plan-modal').style.display = 'flex';
+}
+
+function editPlan(planId) {
+  const plan = myPlans.find(p => p._id === planId);
+  if (!plan) return;
+  editingPlanId = planId;
+  document.getElementById('modal-title').textContent = 'Edit Workout Plan';
+  document.getElementById('m-title').value = plan.title;
+  document.getElementById('m-desc').value = plan.description || '';
+  document.getElementById('m-diff').value = plan.difficulty || 'intermediate';
+  document.getElementById('m-public').checked = plan.isPublic;
+  const cont = document.getElementById('m-days-container');
+  cont.innerHTML = '';
+  plan.days.forEach(d => addDayToModal(d));
+  document.getElementById('plan-modal').style.display = 'flex';
+}
+
+function closeModal() { document.getElementById('plan-modal').style.display = 'none'; }
+
+function addDayToModal(day = {}) {
+  const cont = document.getElementById('m-days-container');
+  const dId = 'day-' + Math.random().toString(36).substr(2, 9);
+  const div = document.createElement('div');
+  div.className = 'card';
+  div.style.marginBottom = '12px';
+  div.innerHTML = `
+    <div style="display:flex;gap:12px;margin-bottom:12px;">
+      <input type="text" class="form-input d-name" placeholder="Day Name (e.g. Day 1: Push)" value="${day.dayName || ''}" style="flex:1;">
+      <input type="text" class="form-input d-focus" placeholder="Focus (e.g. Chest/Tri)" value="${day.focus || ''}" style="width:120px;">
+      <button class="btn btn-outline btn-sm" onclick="this.closest('.card').remove()">✕</button>
+    </div>
+    <div class="m-ex-container" id="${dId}"></div>
+    <button class="btn btn-outline btn-sm btn-block" style="margin-top:8px;" onclick="addExToDayModal('${dId}')">+ Add Exercise</button>`;
+  cont.appendChild(div);
+  if (day.exercises?.length) day.exercises.forEach(ex => addExToDayModal(dId, ex));
+  else addExToDayModal(dId);
+}
+
+function addExToDayModal(dId, ex = {}) {
+  const cont = document.getElementById(dId);
+  const row = document.createElement('div');
+  row.style.display = 'grid';
+  row.style.gridTemplateColumns = '2fr 60px 60px 60px 40px';
+  row.style.gap = '8px';
+  row.style.marginBottom = '6px';
+  row.innerHTML = `
+    <input type="text" class="form-input ex-name" placeholder="Exercise" value="${ex.name || ''}">
+    <input type="number" class="form-input ex-sets" placeholder="S" value="${ex.sets || 3}">
+    <input type="number" class="form-input ex-reps" placeholder="R" value="${ex.reps || 10}">
+    <input type="number" class="form-input ex-weight" placeholder="W" value="${ex.weight || 0}">
+    <button class="btn btn-outline btn-sm" onclick="this.parentElement.remove()">✕</button>`;
+  cont.appendChild(row);
+}
+
+async function saveManualPlan() {
+  const title = document.getElementById('m-title').value.trim();
+  if (!title) return toast('Plan title is required', 'warning');
+
+  const days = Array.from(document.querySelectorAll('#m-days-container > .card')).map(dCard => {
+    const dayName = dCard.querySelector('.d-name').value.trim();
+    const focus = dCard.querySelector('.d-focus').value.trim();
+    const exercises = Array.from(dCard.querySelectorAll('.m-ex-container > div')).map(row => ({
+      name: row.querySelector('.ex-name').value.trim(),
+      sets: parseInt(row.querySelector('.ex-sets').value) || 0,
+      reps: parseInt(row.querySelector('.ex-reps').value) || 0,
+      weight: parseFloat(row.querySelector('.ex-weight').value) || 0
+    })).filter(e => e.name);
+    return { dayName, focus, exercises };
+  }).filter(d => d.dayName);
+
+  if (!days.length) return toast('Add at least one training day', 'warning');
+
+  const payload = {
+    title,
+    description: document.getElementById('m-desc').value.trim(),
+    difficulty: document.getElementById('m-diff').value,
+    isPublic: document.getElementById('m-public').checked,
+    days,
+    source: 'manual'
+  };
+
+  try {
+    if (editingPlanId) {
+      await api('PUT', `/workout/plans/${editingPlanId}`, payload);
+      toast('Plan updated! 💪', 'success');
+    } else {
+      const saved = await api('POST', '/workout/plans', payload);
+      await api('PUT', '/users/me', { activeWorkoutPlan: saved._id });
+      activePlanId = saved._id;
+      toast('Plan created and set as active! 💪', 'success');
+    }
+    closeModal();
+    loadPlans();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function loadLogFromPlan(planId) {
+  const plan = myPlans.find(p => p._id === planId);
+  if (!plan) return;
+  showTab('log');
+  if (plan.days?.length) {
+    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayName = daysOfWeek[new Date().getDay()];
+    
+    // Try to find a day that matches today's name
+    let day = plan.days.find(d => d.dayName.toLowerCase().includes(todayName.toLowerCase()));
+    
+    // Fallback to first day if no match (or if today is a rest day)
+    if (!day) day = plan.days[0];
+
+    document.getElementById('log-day').value = `${day.dayName} — ${day.focus}`;
+    const cont = document.getElementById('exercises-container');
+    cont.innerHTML = '';
+    day.exercises.forEach(ex => addExerciseRow(ex));
+  }
+}
+
+function addExerciseRow(ex = {}) {
+  const cont = document.getElementById('exercises-container');
+  const row = document.createElement('div');
+  row.className = 'exercise-row';
+  row.innerHTML = `
+    <input type="text" class="form-input ex-name" placeholder="Exercise name" value="${ex.name || ''}" style="font-size:0.85rem;">
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      <div style="font-size:0.7rem;color:var(--text-muted);">Target: ${ex.sets||3}×${ex.reps||10}</div>
+      <input type="hidden" class="ex-target-sets" value="${ex.sets||3}">
+      <input type="hidden" class="ex-target-reps" value="${ex.reps||10}">
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <input type="number" class="form-input ex-sets" placeholder="Sets" value="${ex.sets || 3}" min="0" style="font-size:0.85rem;width:45px;padding:8px 4px;">
+      <span style="font-size:0.8rem;">×</span>
+      <input type="number" class="form-input ex-reps" placeholder="Reps" value="${ex.reps || 10}" min="0" style="font-size:0.85rem;width:45px;padding:8px 4px;">
+    </div>
+    <input type="number" class="form-input ex-weight" placeholder="Weight" value="${ex.weight || 0}" min="0" step="2.5" style="font-size:0.85rem;">
+    <select class="form-select ex-unit" style="font-size:0.85rem;">
+      <option value="lbs" ${ex.unit!=='kg'?'selected':''}>lbs</option>
+      <option value="kg" ${ex.unit==='kg'?'selected':''}>kg</option>
+    </select>
+    <button onclick="this.closest('.exercise-row').remove()" class="btn btn-outline btn-sm" style="padding:8px;">✕</button>`;
+  cont.appendChild(row);
+}
+
+function setMood(mood) {
+  currentMood = mood;
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.toggle('selected', b.dataset.mood === mood));
+}
+
+async function submitLog() {
+  const dayName = document.getElementById('log-day').value.trim();
+  const duration = parseInt(document.getElementById('log-duration').value) || 0;
+  const notes = document.getElementById('log-notes').value.trim();
+  const rows = document.querySelectorAll('.exercise-row');
+  if (!dayName) return toast('Enter a day/focus name', 'warning');
+  if (!rows.length) return toast('Add at least one exercise', 'warning');
+
+  const exercises = Array.from(rows).map(r => ({
+    name: r.querySelector('.ex-name').value.trim(),
+    plannedSets: parseInt(r.querySelector('.ex-target-sets')?.value || r.querySelector('.ex-sets').value) || 0,
+    completedSets: parseInt(r.querySelector('.ex-sets').value) || 0,
+    plannedReps: parseInt(r.querySelector('.ex-target-reps')?.value || r.querySelector('.ex-reps').value) || 0,
+    completedReps: parseInt(r.querySelector('.ex-reps').value) || 0,
+    actualWeight: parseFloat(r.querySelector('.ex-weight').value) || 0,
+    unit: r.querySelector('.ex-unit').value,
+    isCompleted: true
+  })).filter(e => e.name);
+
+  if (!exercises.length) return toast('Name your exercises', 'warning');
+
+  const btn = document.getElementById('submit-log-btn');
+  btn.disabled = true; btn.textContent = 'Submitting...';
+  try {
+    const result = await api('POST', '/workout/log', { dayName, exercises, duration, notes, mood: currentMood, planId: activePlanId });
+    const plateauHtml = result.plateausDetected?.length
+      ? `<div class="plateau-alert">⚠️ <strong>Plateau detected</strong> in: ${result.plateausDetected.join(', ')}. <a href="/ai" style="color:var(--fire);">Ask AI to tweak your plan →</a></div>` : '';
+    const milestonesHtml = result.newMilestones?.length
+      ? result.newMilestones.map(m => `<span class="milestone-badge">${m}</span>`).join('') : '';
+    document.getElementById('log-result').innerHTML = `
+      <div class="card" style="border-color:var(--green);">
+        <div style="font-size:1.3rem;font-weight:800;margin-bottom:8px;">✅ Workout Logged!</div>
+        <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap;">
+          <span>🔥 Streak: <strong>${result.currentStreak}</strong> days</span>
+          <span>👑 Best: <strong>${result.highestStreak}</strong> days</span>
+        </div>
+        ${milestonesHtml ? `<div style="margin-bottom:12px;">${milestonesHtml}</div>` : ''}
+        ${plateauHtml}
+      </div>`;
+    toast('Workout logged! Streak updated 🔥', 'success');
+    document.getElementById('exercises-container').innerHTML = '';
+    document.getElementById('log-day').value = '';
+    document.getElementById('log-duration').value = '';
+    document.getElementById('log-notes').value = '';
+  } catch(e) { toast(e.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = '✅ Submit Workout Log'; }
+}
+
+async function generateAIPlan() {
+  const btn = document.getElementById('ai-gen-btn');
+  btn.disabled = true; btn.textContent = '🤖 Generating...';
+  document.getElementById('ai-plan-preview').innerHTML = '<div class="loader"></div>';
+  try {
+    const plan = await api('POST', '/ai/workout-plan', {
+      goal: document.getElementById('ai-goal').value,
+      fitnessLevel: document.getElementById('ai-level').value,
+      daysPerWeek: document.getElementById('ai-days').value,
+      equipment: document.getElementById('ai-equipment').value,
+      age: document.getElementById('ai-age').value || 25,
+      weight: document.getElementById('ai-weight').value || 175,
+      injuries: document.getElementById('ai-injuries').value || 'None'
+    });
+    const preview = document.getElementById('ai-plan-preview');
+    preview.innerHTML = `
+      <div class="card" style="border-color:var(--primary);">
+        <h2 style="margin-bottom:6px;">${plan.title}</h2>
+        <p class="text-muted" style="margin-bottom:16px;font-size:0.88rem;">${plan.description}</p>
+        ${plan.days?.map(d => `
+          <div style="margin-bottom:16px;">
+            <div style="font-weight:700;margin-bottom:8px;">${d.dayName} — <span class="text-muted">${d.focus}</span></div>
+            ${d.exercises?.map(e => `
+              <div style="display:flex;gap:10px;font-size:0.85rem;padding:6px 0;border-bottom:1px solid var(--card-border);flex-wrap:wrap;">
+                <span style="font-weight:600;flex:1;">${e.name}</span>
+                <span class="text-muted">${e.sets}×${e.reps} @ ${e.weight}${e.unit}</span>
+                ${e.notes ? `<span class="text-muted" style="width:100%;font-size:0.78rem;font-style:italic;">${e.notes}</span>` : ''}
+              </div>`).join('')}
+          </div>`).join('')}
+        <button class="btn btn-primary" onclick="savePlan(${JSON.stringify(plan).replace(/"/g,'&quot;')})" style="margin-top:12px;">💾 Save This Plan</button>
+      </div>`;
+  } catch(e) {
+    document.getElementById('ai-plan-preview').innerHTML = `<div class="card" style="border-color:var(--red);padding:20px;"><p>❌ ${e.message}</p></div>`;
+  }
+  btn.disabled = false; btn.textContent = '🤖 Generate My Plan';
+}
+
+async function savePlan(plan) {
+  try {
+    const saved = await api('POST', '/workout/plans', { ...plan, source: 'ai' });
+    await api('PUT', '/users/me', { activeWorkoutPlan: saved._id });
+    activePlanId = saved._id;
+    toast('Plan saved and set as active! 💪', 'success');
+    showTab('plans');
+    loadPlans();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function useFreeze() {
+  if (!confirm('Use a streak freeze? This will keep your streak alive for today.')) return;
+  try {
+    const result = await api('POST', '/workout/streak/freeze');
+    document.getElementById('freeze-count').textContent = result.freezesRemaining;
+    toast(`Streak freeze used! 🛡️ Streak: ${result.currentStreak} days`, 'success');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function loadHistory() {
+  try {
+    const stats = await api('GET', '/workout/logs/stats');
+    document.getElementById('h-sessions').textContent = stats.totalSessions;
+    document.getElementById('h-avg').textContent = stats.avgProgress + '%';
+    document.getElementById('h-sets').textContent = stats.totalSets;
+
+    const logs = await api('GET', '/workout/logs?limit=50');
+    document.getElementById('history-list').innerHTML = logs.map(l => `
+      <div style="padding:14px 0;border-bottom:1px solid var(--card-border);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
+          <div>
+            <span style="font-weight:700;">${l.dayName || 'Session'}</span>
+            <span class="text-muted" style="font-size:0.8rem;margin-left:10px;">${formatDate(l.date)}</span>
+            ${l.mood ? `<span style="margin-left:8px;font-size:0.8rem;">${{terrible:'😞',bad:'😐',okay:'😊',good:'💪',great:'🔥'}[l.mood]}</span>` : ''}
+          </div>
+          <div style="font-size:0.85rem;font-weight:700;color:${l.progressPercent===100?'var(--green)':'var(--text-muted)'};">
+            ${l.progressPercent}% · ${l.completedSets} sets ${l.duration ? `· ${l.duration}min` : ''}
+          </div>
+        </div>
+        <div class="progress-bar-wrap"><div class="progress-bar${l.progressPercent===100?' green':''}" style="width:${l.progressPercent}%"></div></div>
+        ${l.plateauDetected ? '<div style="font-size:0.78rem;color:var(--fire);margin-top:6px;">⚠️ Plateau detected in this session</div>' : ''}
+      </div>`).join('') || '<div class="empty-state"><div class="icon">📊</div><p>No logs yet</p></div>';
+
+    loadProgressChart();
+  } catch(e) { toast('Failed to load history', 'error'); }
+}
+
+async function loadProgressChart() {
+  try {
+    const stats = await api('GET', '/workout/stats/daily-progress');
+    const ctx = document.getElementById('progressChart').getContext('2d');
+    
+    if (progressChart) progressChart.destroy();
+    
+    progressChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: stats.map(s => s.date),
+        datasets: [{
+          label: 'Completion %',
+          data: stats.map(s => s.progress),
+          borderColor: '#7c3aed',
+          backgroundColor: 'rgba(124, 58, 237, 0.1)',
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { min: 0, max: 100, ticks: { callback: v => v + '%' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  } catch(e) { console.error('Chart error:', e); }
+}
+
+async function loadPublicPlans() {
+  try {
+    const plans = await api('GET', '/workout/plans/public');
+    document.getElementById('public-plans-list').innerHTML = plans.map(p => `
+      <div class="plan-card">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
+          ${avatarHTML(p.owner, 32)}
+          <div>
+            <div style="font-weight:600;font-size:0.85rem;">${p.owner?.username || 'Unknown'}</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);">🔥 ${p.owner?.currentStreak || 0} streak</div>
+          </div>
+        </div>
+        <div style="font-weight:700;margin-bottom:4px;">${p.title}</div>
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;">${p.difficulty} · ${p.days?.length || 0} days · ${p.cloneCount} clones</div>
+        <button class="btn btn-primary btn-sm" onclick="clonePlan('${p._id}')">📋 Clone Plan</button>
+      </div>`).join('') || '<div class="empty-state"><div class="icon">🌐</div><p>No public plans yet</p></div>';
+  } catch(e) { toast('Failed to load community plans', 'error'); }
+}
+
+async function clonePlan(planId) {
+  try {
+    const plan = await api('POST', `/workout/plans/${planId}/clone`);
+    toast(`Cloned "${plan.title}" and set as active! 💪`, 'success');
+    showTab('plans');
+    loadPlans();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function showTab(tab) {
+  ['plans','log','ai','history','public'].forEach(t => {
+    document.getElementById(`pane-${t}`).style.display = t === tab ? 'block' : 'none';
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+  });
+  if (tab === 'history') loadHistory();
+  if (tab === 'public') loadPublicPlans();
+  if (tab === 'log' && !document.querySelectorAll('.exercise-row').length) addExerciseRow();
+}
+
+init();
+</script>
+</body>
+</html>

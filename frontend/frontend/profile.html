@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Profile — fitnesSHARE</title>
+<link rel="stylesheet" href="/css/global.css">
+<style>
+.profile-header{background:var(--bg2);border:1px solid var(--card-border);border-radius:var(--radius-lg);padding:40px;margin-bottom:28px;display:flex;align-items:center;gap:32px;flex-wrap:wrap;}
+.profile-info{flex:1;min-width:300px;}
+.profile-name-row{display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.profile-bio{color:var(--text-muted);font-size:0.95rem;margin-bottom:20px;max-width:600px;}
+.profile-stats-grid{display:flex;gap:32px;flex-wrap:wrap;}
+.profile-stat-item{text-align:center;}
+.profile-stat-val{font-size:1.4rem;font-weight:800;display:block;}
+.profile-stat-lbl{font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;}
+.edit-profile-modal .form-group{margin-bottom:16px;}
+.pr-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));gap:16px;}
+.pr-card{background:rgba(124,58,237,0.05);border:1px solid rgba(124,58,237,0.2);border-radius:var(--radius);padding:16px;text-align:center;}
+.pr-val{font-size:1.2rem;font-weight:800;color:var(--primary-light);display:block;margin-bottom:4px;}
+.pr-name{font-size:0.85rem;font-weight:600;color:var(--text);}
+.pr-date{font-size:0.7rem;color:var(--text-muted);display:block;margin-top:4px;}
+@media(max-width:600px){.profile-header{padding:24px;flex-direction:column;text-align:center;}.profile-stats-grid{justify-content:center;}}
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="theme-toggle" title="Toggle dark/light mode">
+  <span id="theme-toggle-icon">🌙</span>
+</button>
+<div id="toast-container"></div>
+<nav class="navbar">
+  <a href="/" class="nav-logo" id="logo-link">fitnesSHARE</a>
+  <div class="nav-links">
+    <a href="/dashboard" class="nav-link"> Home</a>
+    <a href="/workout" class="nav-link"> Workout</a>
+    <a href="/diet" class="nav-link"> Diet</a>
+    <a href="/social" class="nav-link"> Social</a>
+    <a href="/ai" class="nav-link"> AI Coach</a>
+    <a href="/profile" class="nav-link active"> Profile</a>
+    <a href="/auth" class="btn btn-primary btn-sm" id="nav-auth-btn" style="display:none;">Sign In</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="app-layout">
+    <aside class="sidebar">
+      <a href="/dashboard" class="sidebar-link"><span class="icon"></span>Dashboard</a>
+      <a href="/workout" class="sidebar-link"><span class="icon"></span>Workout</a>
+      <a href="/diet" class="sidebar-link"><span class="icon"></span>Diet</a>
+      <a href="/social" class="sidebar-link"><span class="icon"></span>Social Feed</a>
+      <a href="/ai" class="sidebar-link"><span class="icon"></span>AI Coach</a>
+      <a href="/duo" class="sidebar-link"><span class="icon"></span>Duo Streaks</a>
+      <a href="/leaderboard" class="sidebar-link"><span class="icon"></span>Leaderboard</a>
+      <a href="/profile" class="sidebar-link active"><span class="icon"></span>Profile</a>
+    </aside>
+    
+    <main class="main-content">
+      <div id="profile-content">
+        <div class="loader"></div>
+      </div>
+      
+      <div class="tab-bar" style="margin-bottom:24px;">
+        <button class="tab-btn active" id="tab-posts" onclick="showTab('posts')">📸 Posts</button>
+        <button class="tab-btn" id="tab-stats" onclick="showTab('stats')">📈 Stats & PRs</button>
+        <button class="tab-btn" id="tab-milestones" onclick="showTab('milestones')">🏅 Milestones</button>
+      </div>
+      
+      <div id="pane-posts">
+        <div id="user-posts" class="grid-2">
+          <div class="loader"></div>
+        </div>
+      </div>
+      
+      <div id="pane-stats" style="display:none;">
+        <div class="card" style="margin-bottom:24px;">
+          <h2 style="margin-bottom:20px;">🏆 Personal Records</h2>
+          <div id="pr-list" class="pr-grid">
+            <div class="loader"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h2 style="margin-bottom:20px;">🗓️ Activity Summary</h2>
+          <div id="activity-summary">
+            <!-- Activity summary graph/stats would go here -->
+            <p class="text-muted">Consistent tracking is the key to progress. Keep logging!</p>
+          </div>
+        </div>
+      </div>
+      
+      <div id="pane-milestones" style="display:none;">
+        <div class="card">
+          <h2 style="margin-bottom:20px;">🏅 Achieved Milestones</h2>
+          <div id="milestones-list" class="milestone-list">
+            <div class="loader"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script>
+// Theme toggle logic
+const themeToggle = document.getElementById('theme-toggle');
+const themeIcon = document.getElementById('theme-toggle-icon');
+function setTheme(theme) {
+  if (theme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    themeIcon.textContent = '☀️';
+    localStorage.setItem('theme', 'light');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    themeIcon.textContent = '🌙';
+    localStorage.setItem('theme', 'dark');
+  }
+}
+themeToggle.onclick = () => {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  setTheme(isLight ? 'dark' : 'light');
+};
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme === 'light') setTheme('light');
+</script>
+<!-- Edit Profile Modal -->
+<div id="edit-modal" style="display:none;" class="modal-overlay" onclick="if(event.target===this)closeEditModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>👤 Edit Profile</h2>
+      <button class="modal-close" onclick="closeEditModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Avatar</label>
+      <input type="file" id="edit-avatar" class="form-input" accept="image/*">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input type="text" id="edit-username" class="form-input">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Bio</label>
+      <textarea id="edit-bio" class="form-textarea" maxlength="300"></textarea>
+    </div>
+    <div class="form-group" style="flex-direction:row; align-items:center; gap:10px;">
+      <input type="checkbox" id="edit-public" style="width:18px; height:18px;">
+      <label class="form-label" style="margin:0;">Public Profile</label>
+    </div>
+    <button class="btn btn-primary btn-block" style="margin-top:20px;" onclick="saveProfile()">Save Changes</button>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+const currentUser = getUser();
+const urlParams = new URLSearchParams(window.location.search);
+const userId = urlParams.get('id') || currentUser?._id;
+
+if (!currentUser && !urlParams.get('id')) {
+  window.location.href = '/auth';
+}
+
+if (!currentUser) {
+  document.getElementById('logo-link').href = '/';
+  document.getElementById('nav-auth-btn').style.display = 'inline-flex';
+  document.querySelectorAll('.nav-link').forEach(l => {
+    const h = l.getAttribute('href');
+    if (h !== '/social' && h !== '/leaderboard') l.style.display = 'none';
+  });
+  document.querySelectorAll('.sidebar-link').forEach(l => {
+    const h = l.getAttribute('href');
+    if (h !== '/social' && h !== '/leaderboard') l.style.display = 'none';
+  });
+} else {
+  document.getElementById('logo-link').href = '/dashboard';
+}
+
+const isOwnProfile = currentUser && userId === currentUser._id;
+
+async function loadProfile() {
+  try {
+    const user = await api('GET', `/users/${userId}`);
+    const me = currentUser ? (isOwnProfile ? user : await api('GET', '/users/me')) : null;
+    
+    const isFollowing = !isOwnProfile && me?.following?.includes(userId);
+    
+    document.getElementById('profile-content').innerHTML = `
+      <div class="profile-header fade-in">
+        ${avatarHTML(user, 120)}
+        <div class="profile-info">
+          <div class="profile-name-row">
+            <h1 style="font-size:2rem;">${user.username}</h1>
+            ${isOwnProfile ? 
+              `<button class="btn btn-outline btn-sm" onclick="showEditModal()">⚙️ Edit</button>` : 
+              `<button class="btn ${isFollowing?'btn-outline':'btn-primary'} btn-sm" onclick="toggleFollow()">${isFollowing?'Unfollow':'Follow'}</button>`
+            }
+          </div>
+          <p class="profile-bio">${user.bio || 'No bio yet.'}</p>
+          <div class="profile-stats-grid">
+            <div class="profile-stat-item"><span class="profile-stat-val">${user.followers?.length || 0}</span><span class="profile-stat-lbl">Followers</span></div>
+            <div class="profile-stat-item"><span class="profile-stat-val">${user.following?.length || 0}</span><span class="profile-stat-lbl">Following</span></div>
+            <div class="profile-stat-item"><span class="profile-stat-val fire">🔥 ${user.currentStreak || 0}</span><span class="profile-stat-lbl">Streak</span></div>
+            <div class="profile-stat-item"><span class="profile-stat-val gradient">👑 ${user.highestStreak || 0}</span><span class="profile-stat-lbl">Best</span></div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Load PRs
+    const prCont = document.getElementById('pr-list');
+    if (user.personalRecords?.length) {
+      prCont.innerHTML = user.personalRecords.map(pr => `
+        <div class="pr-card">
+          <span class="pr-val">${pr.weight}${pr.unit || 'lbs'}</span>
+          <span class="pr-name">${pr.exercise}</span>
+          <span class="pr-date">${formatDate(pr.date)}</span>
+        </div>
+      `).join('');
+    } else {
+      prCont.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><p>No personal records yet.</p></div>';
+    }
+    
+    // Load Milestones
+    const mCont = document.getElementById('milestones-list');
+    if (user.milestonesAchieved?.length) {
+      mCont.innerHTML = user.milestonesAchieved.map(m => `<span class="milestone-badge" style="padding:10px 18px; font-size:0.9rem;">${m}</span>`).join('');
+    } else {
+      mCont.innerHTML = '<div class="empty-state"><p>No milestones achieved yet.</p></div>';
+    }
+    
+    // Load Posts
+    loadUserPosts();
+    
+    // Populate edit modal
+    if (isOwnProfile) {
+      document.getElementById('edit-username').value = user.username;
+      document.getElementById('edit-bio').value = user.bio || '';
+      document.getElementById('edit-public').checked = user.isPublic;
+    }
+    
+  } catch (e) {
+    document.getElementById('profile-content').innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>${e.message}</p></div>`;
+  }
+}
+
+async function loadUserPosts() {
+  try {
+    const posts = await api('GET', `/posts/user/${userId}`);
+    const cont = document.getElementById('user-posts');
+    if (posts.length) {
+      cont.innerHTML = posts.map(p => `
+        <div class="post-card fade-in">
+          ${p.imageUrl ? `<img src="${p.imageUrl}" class="post-image" alt="Post">` : `<div class="post-image-placeholder">💪</div>`}
+          <div class="post-body">
+            <div class="post-meta">${timeAgo(p.createdAt)} · ${p.type}</div>
+            <div style="font-size:0.85rem; margin-top:8px;">${p.caption || ''}</div>
+          </div>
+          <div class="post-actions">
+            <span class="post-action-btn">❤️ ${p.likes?.length || 0}</span>
+            <span class="post-action-btn">💬 ${p.comments?.length || 0}</span>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      cont.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><p>No posts yet.</p></div>';
+    }
+  } catch (e) {
+    document.getElementById('user-posts').innerHTML = '<p>Failed to load posts.</p>';
+  }
+}
+
+async function toggleFollow() {
+  try {
+    const r = await api('POST', `/users/${userId}/follow`);
+    toast(r.message, 'success');
+    loadProfile();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+function showEditModal() { document.getElementById('edit-modal').style.display = 'flex'; }
+function closeEditModal() { document.getElementById('edit-modal').style.display = 'none'; }
+
+async function saveProfile() {
+  const bio = document.getElementById('edit-bio').value.trim();
+  const username = document.getElementById('edit-username').value.trim();
+  const isPublic = document.getElementById('edit-public').checked;
+  const avatarFile = document.getElementById('edit-avatar').files[0];
+  
+  const fd = new FormData();
+  fd.append('bio', bio);
+  fd.append('username', username);
+  fd.append('isPublic', isPublic);
+  if (avatarFile) fd.append('avatar', avatarFile);
+  
+  try {
+    const updatedUser = await api('PUT', '/users/me', fd, true);
+    setAuth(getToken(), updatedUser);
+    toast('Profile updated!', 'success');
+    closeEditModal();
+    loadProfile();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+function showTab(tab) {
+  ['posts', 'stats', 'milestones'].forEach(t => {
+    document.getElementById(`pane-${t}`).style.display = t === tab ? 'block' : 'none';
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+  });
+}
+
+loadProfile();
+</script>
+</body>
+</html>

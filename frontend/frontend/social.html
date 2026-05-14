@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Social Feed — fitnesSHARE</title>
+<link rel="stylesheet" href="/css/global.css">
+<style>
+.feed-grid{display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start;}
+.posts-col{display:flex;flex-direction:column;gap:16px;}
+.comment-input-wrap{display:flex;gap:8px;padding:10px 16px 12px;}
+.comment-input{flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--card-border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.85rem;font-family:inherit;}
+.comment-input:focus{outline:none;border-color:var(--primary);}
+.create-post-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:20px;margin-bottom:16px;}
+.post-img-preview{width:100%;border-radius:var(--radius-sm);max-height:200px;object-fit:cover;margin-top:12px;display:none;}
+@media(max-width:900px){.feed-grid{grid-template-columns:1fr;}.sidebar-col{display:none;}}
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="theme-toggle" title="Toggle dark/light mode">
+  <span id="theme-toggle-icon">🌙</span>
+</button>
+<div id="toast-container"></div>
+<nav class="navbar">
+  <a href="/" class="nav-logo" id="logo-link">fitnesSHARE</a>
+  <div class="nav-links">
+    <a href="/dashboard" class="nav-link"> Home</a>
+    <a href="/workout" class="nav-link"> Workout</a>
+    <a href="/diet" class="nav-link"> Diet</a>
+    <a href="/social" class="nav-link active"> Social</a>
+    <a href="/ai" class="nav-link"> AI Coach</a>
+    <a href="/profile" class="nav-link"> Profile</a>
+    <a href="/auth" class="btn btn-primary btn-sm" id="nav-auth-btn" style="display:none;">Sign In</a>
+  </div>
+</nav>
+<div class="page">
+  <div class="app-layout">
+    <aside class="sidebar">
+      <a href="/dashboard" class="sidebar-link"><span class="icon"></span>Dashboard</a>
+      <a href="/workout" class="sidebar-link"><span class="icon"></span>Workout</a>
+      <a href="/diet" class="sidebar-link"><span class="icon"></span>Diet</a>
+      <a href="/social" class="sidebar-link active"><span class="icon"></span>Social Feed</a>
+      <a href="/ai" class="sidebar-link"><span class="icon"></span>AI Coach</a>
+      <a href="/duo" class="sidebar-link"><span class="icon"></span>Duo Streaks</a>
+      <a href="/leaderboard" class="sidebar-link"><span class="icon"></span>Leaderboard</a>
+      <a href="/profile" class="sidebar-link"><span class="icon"></span>Profile</a>
+    </aside>
+    <main class="main-content">
+      <div style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">
+        <h1>📸 Social Feed</h1>
+        <div style="display:flex;gap:8px;">
+          <button class="tab-btn active" id="feed-btn" onclick="loadFeed('feed')">Following</button>
+          <button class="tab-btn" id="explore-btn" onclick="loadFeed('explore')">Explore</button>
+        </div>
+      </div>
+<script>
+// Theme toggle logic
+const themeToggle = document.getElementById('theme-toggle');
+const themeIcon = document.getElementById('theme-toggle-icon');
+function setTheme(theme) {
+  if (theme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    themeIcon.textContent = '☀️';
+    localStorage.setItem('theme', 'light');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    themeIcon.textContent = '🌙';
+    localStorage.setItem('theme', 'dark');
+  }
+}
+themeToggle.onclick = () => {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  setTheme(isLight ? 'dark' : 'light');
+};
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme === 'light') setTheme('light');
+</script>
+      <div class="feed-grid">
+        <div>
+          <!-- Create Post -->
+          <div class="create-post-card" id="create-post-section">
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
+              <div id="create-avatar"></div>
+              <textarea id="post-caption" class="form-textarea" rows="2" placeholder="Share your workout, meal, or progress… 💪" style="flex:1;min-height:60px;"></textarea>
+            </div>
+            <img id="post-img-preview" class="post-img-preview" alt="Preview">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+              <div style="display:flex;gap:8px;">
+                <label class="btn btn-outline btn-sm" style="cursor:pointer;">
+                  📷 Photo
+                  <input type="file" id="post-img-input" accept="image/*" style="display:none;" onchange="previewPostImg(this)">
+                </label>
+                <select id="post-type" class="form-select" style="width:auto;font-size:0.82rem;padding:6px 10px;">
+                  <option value="general">General</option>
+                  <option value="workout">💪 Workout</option>
+                  <option value="meal">🥗 Meal</option>
+                  <option value="progress">📈 Progress</option>
+                </select>
+              </div>
+              <button class="btn btn-primary btn-sm" id="post-submit-btn" onclick="createPost()">🚀 Post</button>
+            </div>
+          </div>
+
+          <!-- Feed -->
+          <div id="posts-feed"><div class="loader"></div></div>
+          <button id="load-more-btn" class="btn btn-outline btn-block" style="margin-top:16px;display:none;" onclick="loadMore()">Load More</button>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar-col">
+          <div class="card" style="margin-bottom:16px;">
+            <h3 style="margin-bottom:16px;">🏆 Top Streaks</h3>
+            <div id="side-leaderboard"><div class="loader"></div></div>
+          </div>
+          <div class="card">
+            <h3 style="margin-bottom:12px;">🔍 Find People</h3>
+            <input type="text" id="search-input" class="form-input" placeholder="Search username..." oninput="searchUsers()">
+            <div id="search-results" style="margin-top:12px;"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+const me = getUser();
+let currentFeed = me ? 'feed' : 'explore';
+let page = 1;
+
+if (!me) {
+  document.getElementById('logo-link').href = '/';
+  document.getElementById('create-post-section').style.display = 'none';
+  document.getElementById('nav-auth-btn').style.display = 'inline-flex';
+  document.querySelectorAll('.nav-link').forEach(l => {
+    const h = l.getAttribute('href');
+    if (h !== '/social' && h !== '/leaderboard') l.style.display = 'none';
+  });
+  document.querySelectorAll('.sidebar-link').forEach(l => {
+    const h = l.getAttribute('href');
+    if (h !== '/social' && h !== '/leaderboard') l.style.display = 'none';
+  });
+} else {
+  document.getElementById('logo-link').href = '/dashboard';
+  document.getElementById('create-avatar').innerHTML = avatarHTML(me, 38);
+}
+
+function previewPostImg(input) {
+  const f = input.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = e => { const img = document.getElementById('post-img-preview'); img.src = e.target.result; img.style.display = 'block'; };
+  reader.readAsDataURL(f);
+}
+
+async function createPost() {
+  const caption = document.getElementById('post-caption').value.trim();
+  const imgInput = document.getElementById('post-img-input');
+  const type = document.getElementById('post-type').value;
+  if (!caption && !imgInput.files[0]) return toast('Add a caption or photo', 'warning');
+  const btn = document.getElementById('post-submit-btn'); btn.disabled=true; btn.textContent='Posting...';
+  try {
+    const fd = new FormData();
+    fd.append('caption', caption);
+    fd.append('type', type);
+    if (imgInput.files[0]) fd.append('image', imgInput.files[0]);
+    await api('POST', '/posts', fd, true);
+    toast('Posted! 🎉', 'success');
+    document.getElementById('post-caption').value = '';
+    document.getElementById('post-img-preview').style.display='none';
+    imgInput.value='';
+    page=1; loadFeed(currentFeed);
+  } catch(e) { toast(e.message,'error'); }
+  btn.disabled=false; btn.textContent='🚀 Post';
+}
+
+async function loadFeed(type) {
+  currentFeed = type; page = 1;
+  document.getElementById('feed-btn').classList.toggle('active', type==='feed');
+  document.getElementById('explore-btn').classList.toggle('active', type==='explore');
+  document.getElementById('posts-feed').innerHTML = '<div class="loader"></div>';
+  try {
+    const endpoint = type==='feed' ? '/posts/feed' : '/posts/explore';
+    const posts = await api('GET', endpoint+'?page=1&limit=10');
+    renderPosts(posts, false);
+    document.getElementById('load-more-btn').style.display = posts.length===10?'block':'none';
+  } catch(e) { toast('Failed to load feed','error'); }
+}
+
+async function loadMore() {
+  page++;
+  const endpoint = (currentFeed==='feed'?'/posts/feed':'/posts/explore')+`?page=${page}&limit=10`;
+  try {
+    const posts = await api('GET', endpoint);
+    renderPosts(posts, true);
+    if (posts.length < 10) document.getElementById('load-more-btn').style.display='none';
+  } catch(e) { toast('Failed to load more','error'); }
+}
+
+function renderPosts(posts, append) {
+  const html = posts.map(p => renderPost(p)).join('');
+  if (append) document.getElementById('posts-feed').insertAdjacentHTML('beforeend', html);
+  else document.getElementById('posts-feed').innerHTML = html || `<div class="empty-state"><div class="icon">📸</div><p>No posts yet. Follow people or create the first post!</p></div>`;
+}
+
+function renderPost(p) {
+  const liked = p.likes?.includes(me?._id);
+  const stickersHtml = p.dataStickers?.map(s=>`<div class="sticker" style="left:${s.posX}%;top:${s.posY}%;">${s.label}: ${s.value}</div>`).join('') || '';
+  return `<div class="post-card fade-in" id="post-${p._id}">
+    <div class="post-header">
+      ${avatarHTML(p.author, 38)}
+      <div style="flex:1;">
+        <div class="post-author-name">${p.author?.username||'User'}</div>
+        <div class="post-meta">${timeAgo(p.createdAt)} · 🔥${p.author?.currentStreak||0} streak${p.postStreak>1?` · 📸${p.postStreak} post streak`:''}</div>
+      </div>
+      <span class="tag">${p.type}</span>
+    </div>
+    ${p.imageUrl ? `<div class="post-image-wrap"><img src="${p.imageUrl}" class="post-image" alt="Post">${stickersHtml}</div>` : `<div class="post-image-placeholder">💪</div>`}
+    <div class="post-body">
+      ${p.caption ? `<div style="font-size:0.9rem;line-height:1.6;">${p.caption}</div>` : ''}
+      ${p.tags?.length ? `<div style="margin-top:8px;">${p.tags.map(t=>`<span class="tag" style="margin-right:4px;">#${t}</span>`).join('')}</div>` : ''}
+    </div>
+    <div class="post-actions">
+      <button class="post-action-btn ${liked?'liked':''}" id="like-btn-${p._id}" onclick="toggleLike('${p._id}')">❤️ ${p.likes?.length||0}</button>
+      <button class="post-action-btn comment-btn" onclick="toggleComments('${p._id}')">💬 ${p.comments?.length||0}</button>
+      ${p.author?._id === me?._id ? `<button class="post-action-btn" onclick="deletePost('${p._id}')" style="margin-left:auto;color:var(--red);">🗑️</button>` : ''}
+    </div>
+    <div id="comments-${p._id}" style="display:none;border-top:1px solid var(--card-border);">
+      <div style="padding:10px 16px;">
+        ${p.comments?.slice(-3).map(c=>`<div style="display:flex;gap:8px;margin-bottom:8px;font-size:0.83rem;">${avatarHTML(c.author,22)}<div><span style="font-weight:600;">${c.author?.username}</span> ${c.text}<div style="font-size:0.72rem;color:var(--text-muted);">${timeAgo(c.createdAt)}</div></div></div>`).join('')}
+      </div>
+      <div class="comment-input-wrap">
+        <input class="comment-input" id="ci-${p._id}" placeholder="Add comment..." onkeydown="if(event.key==='Enter')postComment('${p._id}')">
+        <button class="btn btn-primary btn-sm" onclick="postComment('${p._id}')">Send</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function toggleLike(id) {
+  try {
+    const r = await api('POST', `/posts/${id}/like`);
+    const btn = document.getElementById(`like-btn-${id}`);
+    btn.innerHTML = `❤️ ${r.likeCount}`;
+    btn.classList.toggle('liked', r.liked);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function toggleComments(id) {
+  const el = document.getElementById(`comments-${id}`);
+  el.style.display = el.style.display==='none' ? 'block' : 'none';
+}
+
+async function postComment(id) {
+  const input = document.getElementById(`ci-${id}`);
+  const text = input.value.trim(); if (!text) return;
+  try {
+    await api('POST', `/posts/${id}/comment`, { text });
+    input.value = '';
+    toast('Comment posted!','success');
+    loadFeed(currentFeed);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function deletePost(id) {
+  if (!confirm('Delete this post?')) return;
+  try {
+    await api('DELETE', `/posts/${id}`);
+    document.getElementById(`post-${id}`)?.remove();
+    toast('Post deleted','info');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function loadSideLeaderboard() {
+  try {
+    const top = await api('GET', '/users/leaderboard');
+    document.getElementById('side-leaderboard').innerHTML = top.slice(0,5).map((u,i)=>`
+      <a href="/profile?id=${u._id}" class="leaderboard-item" style="padding:10px;margin-bottom:6px;text-decoration:none;">
+        <span class="leaderboard-rank ${i<3?'top':''}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</span>
+        ${avatarHTML(u,30)}
+        <div style="flex:1;"><div style="font-size:0.85rem;font-weight:600;">${u.username}</div></div>
+        <div style="font-size:0.85rem;font-weight:700;color:var(--fire);">🔥${u.currentStreak}</div>
+      </a>`).join('');
+  } catch(e) {}
+}
+
+let searchTimer;
+async function searchUsers() {
+  clearTimeout(searchTimer);
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) { document.getElementById('search-results').innerHTML=''; return; }
+  searchTimer = setTimeout(async () => {
+    try {
+      const users = await api('GET', `/users/search?q=${encodeURIComponent(q)}`);
+      document.getElementById('search-results').innerHTML = users.map(u=>`
+        <a href="/profile?id=${u._id}" style="display:flex;align-items:center;gap:10px;padding:8px 0;text-decoration:none;color:var(--text);">
+          ${avatarHTML(u,32)}
+          <div><div style="font-size:0.85rem;font-weight:600;">${u.username}</div><div style="font-size:0.75rem;color:var(--text-muted);">🔥${u.currentStreak} streak</div></div>
+        </a>`).join('') || '<div class="text-muted" style="font-size:0.85rem;">No users found</div>';
+    } catch(e) {}
+  }, 400);
+}
+
+loadFeed('feed');
+loadSideLeaderboard();
+</script>
+</body>
+</html>

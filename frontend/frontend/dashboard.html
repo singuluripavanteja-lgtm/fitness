@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Dashboard — fitnesSHARE</title>
+  <meta name="description" content="Your fitnesSHARE dashboard — streaks, workout stats, diet overview and more.">
+  <link rel="stylesheet" href="/css/global.css">
+  <style>
+    .welcome-banner {
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(6, 182, 212, 0.15));
+      border: 1px solid rgba(124, 58, 237, 0.25);
+      border-radius: var(--radius-lg);
+      padding: 28px 32px;
+      margin-bottom: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .welcome-text h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .welcome-text p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .section-header h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .milestone-list {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .activity-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .activity-icon.workout {
+      background: rgba(124, 58, 237, 0.15);
+    }
+
+    .activity-icon.diet {
+      background: rgba(16, 185, 129, 0.15);
+    }
+
+    .activity-icon.streak {
+      background: rgba(249, 115, 22, 0.15);
+    }
+
+    .duo-invite-card {
+      background: rgba(6, 182, 212, 0.08);
+      border: 1px solid rgba(6, 182, 212, 0.2);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .plan-day-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: rgba(124, 58, 237, 0.1);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      font-size: 0.8rem;
+      color: var(--primary-light);
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .plan-day-chip:hover {
+      background: rgba(124, 58, 237, 0.2);
+    }
+  </style>
+</head>
+
+<body>
+  <button class="theme-toggle" id="theme-toggle" title="Toggle dark/light mode">
+    <span id="theme-toggle-icon">🌙</span>
+  </button>
+  <div id="toast-container"></div>
+
+  <nav class="navbar">
+    <a href="/dashboard" class="nav-logo">fitnesSHARE</a>
+    <div class="nav-links">
+      <a href="/dashboard" class="nav-link active"> Home</a>
+      <a href="/workout" class="nav-link"> Workout</a>
+      <a href="/diet" class="nav-link"> Diet</a>
+      <a href="/social" class="nav-link"> Social</a>
+      <a href="/ai" class="nav-link"> AI Coach</a>
+      <a href="/profile" class="nav-link" id="nav-avatar-link"> Profile</a>
+    </div>
+  </nav>
+
+  <div class="page">
+    <div class="app-layout">
+      <aside class="sidebar">
+        <a href="/dashboard" class="sidebar-link active"><span class="icon"></span>Dashboard</a>
+        <a href="/workout" class="sidebar-link"><span class="icon"></span>Workout</a>
+        <a href="/diet" class="sidebar-link"><span class="icon"></span>Diet</a>
+        <a href="/social" class="sidebar-link"><span class="icon"></span>Social Feed</a>
+        <a href="/ai" class="sidebar-link"><span class="icon"></span>AI
+          Coach</a>
+        <a href="/duo" class="sidebar-link"><span class="icon"></span>Duo Streaks</a>
+        <a href="/leaderboard" class="sidebar-link"><span class="icon"></span>Leaderboard</a>
+        <a href="/profile" class="sidebar-link"><span class="icon"></span>Profile</a>
+        <div style="margin-top:auto;padding-top:24px;border-top:1px solid var(--card-border);margin-top:32px;">
+          <button onclick="doLogout()" class="btn btn-outline btn-sm btn-block" id="logout-btn">🚪 Sign Out</button>
+        </div>
+      </aside>
+
+      <main class="main-content" id="main">
+        <div class="welcome-banner">
+          <div class="welcome-text">
+            <h1 id="welcome-msg">Good morning! 💪</h1>
+            <p id="welcome-sub">Keep your streak alive today.</p>
+          </div>
+          <div class="quick-actions">
+            <a href="/workout" class="btn btn-primary" id="quick-log-btn">+ Log Workout</a>
+            <a href="/diet" class="btn btn-green" id="quick-diet-btn">🥗 Log Meal</a>
+            <a href="/ai" class="btn btn-outline" id="quick-ai-btn">🤖 AI Coach</a>
+          </div>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="grid-4" style="margin-bottom:28px;" id="stats-row">
+          <div class="stat-card">
+            <div class="stat-label">🔥 Current Streak</div>
+            <div class="stat-value fire" id="stat-streak">—</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);" id="stat-streak-sub">days</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">👑 Best Streak</div>
+            <div class="stat-value gradient" id="stat-best">—</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);">all time</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">🛡️ Streak Freezes</div>
+            <div class="stat-value" id="stat-freezes">—</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);">available</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">🏅 Milestones</div>
+            <div class="stat-value gradient" id="stat-milestones">—</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);">earned</div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:28px;">
+          <!-- Active Workout Plan -->
+          <div class="card">
+            <div class="section-header">
+              <h2>💪 Active Workout Plan</h2>
+              <a href="/workout" class="btn btn-outline btn-sm">Manage</a>
+            </div>
+            <div id="active-plan-content">
+              <div class="loader"></div>
+            </div>
+          </div>
+
+          <!-- Today's Diet Summary -->
+          <div class="card">
+            <div class="section-header">
+              <h2>🥗 Today's Nutrition</h2>
+              <a href="/diet" class="btn btn-outline btn-sm">Log Meal</a>
+            </div>
+            <div id="diet-today-content">
+              <div class="loader"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:28px;">
+          <!-- Milestones -->
+          <div class="card">
+            <div class="section-header">
+              <h2>🏅 My Milestones</h2>
+            </div>
+            <div id="milestones-content" class="milestone-list">
+              <div class="text-muted" style="font-size:0.85rem;">Loading...</div>
+            </div>
+          </div>
+
+          <!-- Recent Activity -->
+          <div class="card">
+            <div class="section-header">
+              <h2>📋 Recent Workouts</h2>
+              <a href="/workout" class="btn btn-outline btn-sm">View All</a>
+            </div>
+            <div id="recent-logs">
+              <div class="loader"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Duo Streak Preview -->
+        <div class="card">
+          <div class="section-header">
+            <h2>👥 Duo Streaks</h2>
+            <a href="/duo" class="btn btn-outline btn-sm">View All</a>
+          </div>
+          <div id="duo-preview">
+            <div class="loader"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    requireAuth();
+    const user = getUser();
+
+    // Theme toggle logic
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-toggle-icon');
+    function setTheme(theme) {
+      if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        themeIcon.textContent = '☀️';
+        localStorage.setItem('theme', 'light');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        themeIcon.textContent = '🌙';
+        localStorage.setItem('theme', 'dark');
+      }
+    }
+    themeToggle.onclick = () => {
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      setTheme(isLight ? 'dark' : 'light');
+    };
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') setTheme('light');
+
+    // Welcome message
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    document.getElementById('welcome-msg').textContent = `${greeting}, ${user?.username || 'Athlete'}! 💪`;
+
+    async function loadDashboard() {
+      // Load user profile
+      try {
+        const me = await api('GET', '/users/me');
+        document.getElementById('stat-streak').textContent = me.currentStreak ?? 0;
+        document.getElementById('stat-best').textContent = me.highestStreak ?? 0;
+        document.getElementById('stat-freezes').textContent = me.streakFreezes ?? 0;
+        document.getElementById('stat-milestones').textContent = me.milestonesAchieved?.length ?? 0;
+
+        // Welcome sub
+        if (me.currentStreak > 0) {
+          document.getElementById('welcome-sub').textContent = `🔥 ${me.currentStreak}-day streak! Keep it going.`;
+        }
+
+        // Milestones
+        const mCont = document.getElementById('milestones-content');
+        if (me.milestonesAchieved?.length) {
+          mCont.innerHTML = me.milestonesAchieved.map(m => `<span class="milestone-badge">${m}</span>`).join('');
+        } else {
+          mCont.innerHTML = '<div class="empty-state" style="padding:20px;"><div class="icon">🏅</div><p>Log workouts to earn milestone badges!</p></div>';
+        }
+
+        // Active Workout Plan
+        const planCont = document.getElementById('active-plan-content');
+        if (me.activeWorkoutPlan) {
+          const plan = me.activeWorkoutPlan;
+          const daysHtml = plan.days?.map(d => `<span class="plan-day-chip" onclick="window.location.href='/workout'">${d.dayName}</span>`).join('') || '';
+          planCont.innerHTML = `
+        <div style="font-weight:700;font-size:1rem;margin-bottom:8px;">${plan.title}</div>
+        <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px;">${plan.days?.length || 0} days/week</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">${daysHtml}</div>`;
+        } else {
+          planCont.innerHTML = `<div class="empty-state" style="padding:20px;">
+        <div class="icon">💪</div><p>No active plan yet</p>
+        <a href="/workout" class="btn btn-primary btn-sm" style="margin-top:12px;">Generate AI Plan</a>
+      </div>`;
+        }
+      } catch (e) { console.error(e); }
+
+      // Load diet log
+      try {
+        const log = await api('GET', '/diet/log/today');
+        const cal = log.totals?.calories || 0;
+        const goal = log.dailyGoal?.calories || 2000;
+        const pct = Math.min(100, Math.round((cal / goal) * 100));
+        document.getElementById('diet-today-content').innerHTML = `
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:0.85rem;color:var(--text-muted);">Calories</span>
+        <span style="font-weight:700;">${cal} / ${goal} kcal</span>
+      </div>
+      <div class="progress-bar-wrap" style="margin-bottom:16px;"><div class="progress-bar green" style="width:${pct}%"></div></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
+        <div><div style="font-weight:700;color:var(--accent);">${log.totals?.carbs || 0}g</div><div style="font-size:0.75rem;color:var(--text-muted);">Carbs</div></div>
+        <div><div style="font-weight:700;color:var(--green);">${log.totals?.protein || 0}g</div><div style="font-size:0.75rem;color:var(--text-muted);">Protein</div></div>
+        <div><div style="font-weight:700;color:var(--fire);">${log.totals?.fat || 0}g</div><div style="font-size:0.75rem;color:var(--text-muted);">Fat</div></div>
+      </div>
+      <div style="margin-top:12px;font-size:0.8rem;color:var(--text-muted);">${log.meals?.length || 0} meals logged today</div>`;
+      } catch (e) {
+        document.getElementById('diet-today-content').innerHTML = `<div class="empty-state" style="padding:20px;"><div class="icon">🥗</div><p>No meals logged yet</p></div>`;
+      }
+
+      // Load workout logs
+      try {
+        const stats = await api('GET', '/workout/logs/stats');
+        const logsHtml = stats.recentLogs?.slice(0, 4).map(l => `
+      <div class="activity-item">
+        <div class="activity-icon workout">💪</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:0.88rem;">${l.dayName || 'Workout'}</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);">${l.progressPercent}% complete · ${l.completedSets} sets · ${formatDate(l.date)}</div>
+        </div>
+        <div style="font-size:0.82rem;font-weight:700;color:${l.progressPercent === 100 ? 'var(--green)' : 'var(--text-muted)'};">${l.progressPercent === 100 ? '✅' : '⏳'}</div>
+      </div>`).join('') || '';
+        document.getElementById('recent-logs').innerHTML = logsHtml ||
+          `<div class="empty-state" style="padding:20px;"><div class="icon">📋</div><p>No workout logs yet</p></div>`;
+      } catch (e) {
+        document.getElementById('recent-logs').innerHTML = `<div class="empty-state" style="padding:20px;"><div class="icon">📋</div><p>No workout logs yet</p></div>`;
+      }
+
+      // Load duo streaks
+      try {
+        const duos = await api('GET', '/duo/my');
+        const cont = document.getElementById('duo-preview');
+        if (duos.length === 0) {
+          cont.innerHTML = `<div class="empty-state" style="padding:20px;"><div class="icon">👥</div><p>No duo streaks yet — invite a friend!</p>
+        <a href="/duo" class="btn btn-primary btn-sm" style="margin-top:12px;">Find Partners</a></div>`;
+        } else {
+          cont.innerHTML = duos.slice(0, 3).map(d => {
+            const partner = d.users.find(u => u._id !== user?._id);
+            return `<div class="duo-invite-card" style="margin-bottom:10px;">
+          ${avatarHTML(partner, 36)}
+          <div style="flex:1;"><div style="font-weight:600;font-size:0.9rem;">${partner?.username || 'Partner'}</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);">Status: <span style="color:${d.status === 'active' ? 'var(--green)' : d.status === 'pending' ? 'var(--yellow)' : 'var(--red)'};">${d.status}</span></div></div>
+          <div style="text-align:right;"><div style="font-weight:800;font-size:1.2rem;color:var(--fire);">🔥${d.currentStreak}</div><div style="font-size:0.72rem;color:var(--text-muted);">days</div></div>
+        </div>`;
+          }).join('');
+        }
+      } catch (e) {
+        document.getElementById('duo-preview').innerHTML = `<div class="empty-state" style="padding:20px;"><div class="icon">👥</div><p>Load error</p></div>`;
+      }
+    }
+
+    function doLogout() {
+      clearAuth();
+      window.location.href = '/auth';
+    }
+
+    loadDashboard();
+  </script>
+</body>
+
+</html>

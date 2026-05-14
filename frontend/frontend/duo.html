@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Duo Streaks — fitnesSHARE</title>
+<link rel="stylesheet" href="/css/global.css">
+<style>
+.duo-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:24px;transition:var(--transition);}
+.duo-card.active{border-color:var(--green);}
+.duo-card.pending{border-color:var(--yellow);}
+.duo-card.broken{border-color:var(--red);}
+.duo-status{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:0.78rem;font-weight:700;}
+.duo-status.active{background:rgba(16,185,129,0.15);color:var(--green);}
+.duo-status.pending{background:rgba(251,191,36,0.15);color:var(--yellow);}
+.duo-status.broken{background:rgba(239,68,68,0.15);color:var(--red);}
+.vs-divider{text-align:center;font-size:1.5rem;font-weight:900;color:var(--text-dim);}
+</style>
+</head>
+<body>
+<div id="toast-container"></div>
+<nav class="navbar">
+  <a href="/dashboard" class="nav-logo">🏋️ fitnesSHARE</a>
+  <div class="nav-links">
+    <a href="/dashboard" class="nav-link">🏠</a>
+    <a href="/workout" class="nav-link">💪</a>
+    <a href="/social" class="nav-link">📸</a>
+    <a href="/duo" class="nav-link active">👥 Duo</a>
+    <a href="/profile" class="nav-link">👤</a>
+  </div>
+</nav>
+<div class="page">
+  <div class="app-layout">
+    <aside class="sidebar">
+      <a href="/dashboard" class="sidebar-link"><span class="icon">🏠</span>Dashboard</a>
+      <a href="/workout" class="sidebar-link"><span class="icon">💪</span>Workout</a>
+      <a href="/diet" class="sidebar-link"><span class="icon">🥗</span>Diet</a>
+      <a href="/social" class="sidebar-link"><span class="icon">📸</span>Social Feed</a>
+      <a href="/ai" class="sidebar-link"><span class="icon">🤖</span>AI Coach</a>
+      <a href="/duo" class="sidebar-link active"><span class="icon">👥</span>Duo Streaks</a>
+      <a href="/leaderboard" class="sidebar-link"><span class="icon">🏆</span>Leaderboard</a>
+      <a href="/profile" class="sidebar-link"><span class="icon">👤</span>Profile</a>
+    </aside>
+    <main class="main-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+        <div><h1>👥 Duo Streaks</h1><p class="text-muted" style="margin-top:4px;">Partner up — both must log daily to keep the streak</p></div>
+        <button class="btn btn-primary" onclick="showInviteModal()">+ Invite Partner</button>
+      </div>
+
+      <div id="duo-list"><div class="loader"></div></div>
+
+      <!-- Invite Modal -->
+      <div id="invite-modal" style="display:none;" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>👥 Invite a Duo Partner</h2>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+          </div>
+          <div class="form-group" style="margin-bottom:16px;">
+            <label class="form-label">Search by username</label>
+            <input type="text" id="invite-search" class="form-input" placeholder="Search user..." oninput="searchInvite()">
+          </div>
+          <div id="invite-results" style="max-height:300px;overflow-y:auto;"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+requireAuth();
+const me = getUser();
+
+async function loadDuos() {
+  try {
+    const duos = await api('GET', '/duo/my');
+    const cont = document.getElementById('duo-list');
+    if (!duos.length) {
+      cont.innerHTML = `<div class="empty-state"><div class="icon">👥</div><p>No duo streaks yet!</p><p class="text-muted" style="margin-top:8px;font-size:0.85rem;">Invite a friend to start a shared streak challenge.</p>
+        <button class="btn btn-primary" style="margin-top:16px;" onclick="showInviteModal()">+ Invite Partner</button></div>`;
+      return;
+    }
+    cont.innerHTML = `<div class="grid-2">${duos.map(d => {
+      const partner = d.users?.find(u => u._id !== me?._id) || d.users?.[0];
+      const myIdx = d.users?.findIndex(u => u._id === me?._id);
+      const iLogged = myIdx===0 ? d.user1LoggedToday : d.user2LoggedToday;
+      return `<div class="duo-card ${d.status}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <span class="duo-status ${d.status}">${d.status==='active'?'✅ Active':d.status==='pending'?'⏳ Pending':'💔 Broken'}</span>
+          <div style="font-size:0.78rem;color:var(--text-muted);">Since ${formatDate(d.createdAt)}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;margin-bottom:20px;">
+          <div style="text-align:center;">
+            ${avatarHTML(me, 50)}
+            <div style="font-weight:700;margin-top:6px;font-size:0.85rem;">${me?.username} (You)</div>
+            <div style="font-size:0.78rem;color:${iLogged?'var(--green)':'var(--text-muted)'};">${iLogged?'✅ Logged':'⏳ Not logged'}</div>
+          </div>
+          <div class="vs-divider">⚡</div>
+          <div style="text-align:center;">
+            ${avatarHTML(partner, 50)}
+            <div style="font-weight:700;margin-top:6px;font-size:0.85rem;">${partner?.username||'Partner'}</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);">🔥 ${partner?.currentStreak||0} personal</div>
+          </div>
+        </div>
+        <div style="text-align:center;margin-bottom:16px;">
+          <div style="font-size:2.5rem;font-weight:900;background:var(--gradient-fire);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">🔥${d.currentStreak}</div>
+          <div style="font-size:0.82rem;color:var(--text-muted);">Current Duo Streak · Best: ${d.highestStreak} days</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+          ${d.status==='pending' && d.users?.[1]?._id===me?._id ? `<button class="btn btn-green btn-sm" onclick="acceptDuo('${d._id}')">✅ Accept Invite</button>` : ''}
+          ${d.status==='active' && !iLogged ? `<button class="btn btn-primary btn-sm" onclick="logDuo('${d._id}')">💪 Log Today</button>` : ''}
+          ${d.status==='active' && iLogged ? `<div style="color:var(--green);font-size:0.85rem;font-weight:600;">✅ You've logged today!</div>` : ''}
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+  } catch(e) { toast('Failed to load duo streaks','error'); }
+}
+
+async function acceptDuo(id) {
+  try {
+    await api('POST', `/duo/${id}/accept`);
+    toast('Duo streak accepted! 🔥','success');
+    loadDuos();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function logDuo(id) {
+  try {
+    const r = await api('POST', `/duo/${id}/log`);
+    if (r.bothLogged) toast('Both logged! Streak continues 🔥🔥','success');
+    else toast("You've logged! Waiting for partner... ⏳",'info');
+    loadDuos();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function showInviteModal() { document.getElementById('invite-modal').style.display='flex'; }
+function closeModal() { document.getElementById('invite-modal').style.display='none'; document.getElementById('invite-results').innerHTML=''; document.getElementById('invite-search').value=''; }
+
+let invTimer;
+async function searchInvite() {
+  clearTimeout(invTimer);
+  const q = document.getElementById('invite-search').value.trim();
+  if (!q) { document.getElementById('invite-results').innerHTML=''; return; }
+  invTimer = setTimeout(async () => {
+    try {
+      const users = await api('GET', `/users/search?q=${encodeURIComponent(q)}`);
+      document.getElementById('invite-results').innerHTML = users.filter(u=>u._id!==me?._id).map(u=>`
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--card-border);">
+          ${avatarHTML(u,38)}
+          <div style="flex:1;"><div style="font-weight:600;">${u.username}</div><div style="font-size:0.78rem;color:var(--text-muted);">🔥 ${u.currentStreak} streak</div></div>
+          <button class="btn btn-primary btn-sm" onclick="sendInvite('${u._id}','${u.username}')">Invite</button>
+        </div>`).join('') || '<div class="text-muted" style="padding:12px;font-size:0.85rem;">No users found</div>';
+    } catch(e) {}
+  }, 400);
+}
+
+async function sendInvite(userId, username) {
+  try {
+    await api('POST', '/duo/invite', { targetUserId: userId });
+    toast(`Duo invite sent to ${username}! 👥`,'success');
+    closeModal();
+    loadDuos();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+loadDuos();
+</script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>fitnesSHARE — Login & Register</title>
+<meta name="description" content="Join fitnesSHARE — the AI-powered fitness social platform with workout streaks, diet tracking, and community.">
+<link rel="stylesheet" href="/css/global.css">
+<style>
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;overflow:hidden;}
+.auth-bg{position:fixed;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(124,58,237,0.15) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(6,182,212,0.1) 0%,transparent 50%),var(--bg);z-index:0;}
+.auth-card{background:rgba(17,17,24,0.9);border:1px solid var(--card-border);border-radius:var(--radius-lg);padding:40px;width:100%;max-width:460px;position:relative;z-index:1;backdrop-filter:blur(20px);box-shadow:0 24px 80px rgba(0,0,0,0.5);}
+.auth-logo{text-align:center;margin-bottom:32px;}
+.auth-logo-text{font-size:2rem;font-weight:900;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.auth-logo-sub{color:var(--text-muted);font-size:0.85rem;margin-top:4px;}
+.tab-bar{display:flex;background:rgba(255,255,255,0.04);border-radius:var(--radius-sm);padding:4px;margin-bottom:28px;}
+.auth-tab{flex:1;padding:10px;border:none;background:none;color:var(--text-muted);font-size:0.9rem;font-weight:600;cursor:pointer;border-radius:8px;transition:var(--transition);font-family:inherit;}
+.auth-tab.active{background:var(--gradient);color:#fff;box-shadow:var(--shadow-primary);}
+.auth-form{display:flex;flex-direction:column;gap:16px;}
+.divider{text-align:center;color:var(--text-dim);font-size:0.8rem;position:relative;margin:4px 0;}
+.divider::before,.divider::after{content:'';position:absolute;top:50%;width:42%;height:1px;background:var(--card-border);}
+.divider::before{left:0;}.divider::after{right:0;}
+.features-strip{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:20px;}
+.feature-chip{font-size:0.72rem;padding:5px 12px;border-radius:20px;background:rgba(255,255,255,0.05);border:1px solid var(--card-border);color:var(--text-muted);}
+.floating-orb{position:fixed;border-radius:50%;filter:blur(60px);z-index:0;animation:float 8s ease-in-out infinite;}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-20px);}}
+</style>
+</head>
+<body>
+<div class="auth-bg"></div>
+<div class="floating-orb" style="width:300px;height:300px;background:rgba(124,58,237,0.12);top:10%;left:-5%;animation-delay:0s;"></div>
+<div class="floating-orb" style="width:200px;height:200px;background:rgba(6,182,212,0.08);bottom:20%;right:5%;animation-delay:3s;"></div>
+<div id="toast-container"></div>
+
+<div class="auth-wrap">
+  <div class="auth-card slide-up">
+    <div class="auth-logo">
+      <div class="auth-logo-text">🏋️ fitnesSHARE</div>
+      <div class="auth-logo-sub">AI-Powered Fitness Social Platform</div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Login</button>
+      <button class="auth-tab" id="tab-register" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <!-- Login Form -->
+    <div id="login-form">
+      <div class="auth-form">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="login-email" class="form-input" placeholder="you@email.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="login-password" class="form-input" placeholder="Your password" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary btn-lg btn-block" id="login-btn" onclick="doLogin()">
+          <span>🔓</span> Sign In
+        </button>
+      </div>
+    </div>
+
+    <!-- Register Form -->
+    <div id="register-form" style="display:none;">
+      <div class="auth-form">
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" id="reg-username" class="form-input" placeholder="fitnessbeast99" autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="reg-email" class="form-input" placeholder="you@email.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="reg-password" class="form-input" placeholder="Min 6 characters" autocomplete="new-password">
+        </div>
+        <button class="btn btn-primary btn-lg btn-block" id="register-btn" onclick="doRegister()">
+          <span>🚀</span> Create Account
+        </button>
+      </div>
+    </div>
+
+    <div class="features-strip">
+      <span class="feature-chip">🔥 Streak Tracking</span>
+      <span class="feature-chip">🤖 Grok AI Coach</span>
+      <span class="feature-chip">📸 Food Vision</span>
+      <span class="feature-chip">👥 Duo Streaks</span>
+      <span class="feature-chip">🏆 Leaderboard</span>
+    </div>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+redirectIfAuth();
+
+function switchTab(t) {
+  document.getElementById('login-form').style.display = t==='login'?'block':'none';
+  document.getElementById('register-form').style.display = t==='register'?'block':'none';
+  document.getElementById('tab-login').className = 'auth-tab'+(t==='login'?' active':'');
+  document.getElementById('tab-register').className = 'auth-tab'+(t==='register'?' active':'');
+}
+
+async function doLogin() {
+  const btn = document.getElementById('login-btn');
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) return toast('Please fill in all fields','warning');
+  btn.disabled = true; btn.textContent = 'Signing in...';
+  try {
+    const data = await api('POST','/auth/login',{email,password});
+    setAuth(data.token, data);
+    toast('Welcome back, '+data.username+'! 💪','success');
+    setTimeout(()=>window.location.href='/dashboard',800);
+  } catch(e) {
+    toast(e.message,'error');
+  } finally { btn.disabled=false; btn.innerHTML='<span>🔓</span> Sign In'; }
+}
+
+async function doRegister() {
+  const btn = document.getElementById('register-btn');
+  const username = document.getElementById('reg-username').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  if (!username||!email||!password) return toast('Please fill in all fields','warning');
+  if (password.length<6) return toast('Password must be at least 6 characters','warning');
+  btn.disabled=true; btn.textContent='Creating account...';
+  try {
+    const data = await api('POST','/auth/register',{username,email,password});
+    setAuth(data.token, data);
+    toast('Account created! Let\'s get fit 🔥','success');
+    setTimeout(()=>window.location.href='/dashboard',800);
+  } catch(e) {
+    toast(e.message,'error');
+  } finally { btn.disabled=false; btn.innerHTML='<span>🚀</span> Create Account'; }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key==='Enter') {
+    const activeTab = document.getElementById('tab-login').classList.contains('active');
+    if (activeTab) doLogin(); else doRegister();
+  }
+});
+</script>
+</body>
+</html>

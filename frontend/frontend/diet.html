@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Diet Tracker — fitnesSHARE</title>
+<link rel="stylesheet" href="/css/global.css">
+<style>
+.macro-ring-grid{display:flex;justify-content:space-around;flex-wrap:wrap;gap:20px;padding:16px 0;}
+.meal-card{background:rgba(255,255,255,0.03);border:1px solid var(--card-border);border-radius:var(--radius-sm);padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:14px;}
+.meal-type-badge{padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;text-transform:uppercase;}
+.meal-type-badge.breakfast{background:rgba(251,191,36,0.15);color:var(--yellow);}
+.meal-type-badge.lunch{background:rgba(6,182,212,0.15);color:var(--accent);}
+.meal-type-badge.dinner{background:rgba(124,58,237,0.15);color:var(--primary-light);}
+.meal-type-badge.snack{background:rgba(16,185,129,0.15);color:var(--green);}
+.upload-zone{border:2px dashed var(--card-border);border-radius:var(--radius);padding:40px;text-align:center;cursor:pointer;transition:var(--transition);}
+.upload-zone:hover{border-color:var(--primary);background:rgba(124,58,237,0.05);}
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="theme-toggle" title="Toggle dark/light mode">
+  <span id="theme-toggle-icon">🌙</span>
+</button>
+<div id="toast-container"></div>
+<nav class="navbar">
+  <a href="/dashboard" class="nav-logo">fitnesSHARE</a>
+  <div class="nav-links">
+    <a href="/dashboard" class="nav-link"> Home</a>
+    <a href="/workout" class="nav-link"> Workout</a>
+    <a href="/diet" class="nav-link active"> Diet</a>
+    <a href="/social" class="nav-link"> Social</a>
+    <a href="/ai" class="nav-link"> AI Coach</a>
+    <a href="/profile" class="nav-link"> Profile</a>
+  </div>
+</nav>
+<div class="page">
+  <div class="app-layout">
+    <aside class="sidebar">
+      <a href="/dashboard" class="sidebar-link"><span class="icon"></span>Dashboard</a>
+      <a href="/workout" class="sidebar-link"><span class="icon"></span>Workout</a>
+      <a href="/diet" class="sidebar-link active"><span class="icon"></span>Diet</a>
+      <a href="/social" class="sidebar-link"><span class="icon"></span>Social Feed</a>
+      <a href="/ai" class="sidebar-link"><span class="icon"></span>AI Coach</a>
+      <a href="/duo" class="sidebar-link"><span class="icon"></span>Duo Streaks</a>
+      <a href="/leaderboard" class="sidebar-link"><span class="icon"></span>Leaderboard</a>
+      <a href="/profile" class="sidebar-link"><span class="icon"></span>Profile</a>
+    </aside>
+    <main class="main-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+        <div><h1>🥗 Diet Tracker</h1><p class="text-muted" style="margin-top:4px;">Log meals, scan food photos, track macros</p></div>
+      </div>
+      <div class="tab-bar" style="margin-bottom:24px;">
+        <button class="tab-btn active" id="tab-today" onclick="showTab('today')">📊 Today</button>
+        <button class="tab-btn" id="tab-add" onclick="showTab('add')">+ Add Meal</button>
+        <button class="tab-btn" id="tab-vision" onclick="showTab('vision')">📸 AI Vision</button>
+        <button class="tab-btn" id="tab-ai" onclick="showTab('ai')">🤖 AI Diet Plan</button>
+        <button class="tab-btn" id="tab-history" onclick="showTab('history')">📅 History</button>
+      </div>
+<script>
+// Theme toggle logic
+const themeToggle = document.getElementById('theme-toggle');
+const themeIcon = document.getElementById('theme-toggle-icon');
+function setTheme(theme) {
+  if (theme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    themeIcon.textContent = '☀️';
+    localStorage.setItem('theme', 'light');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    themeIcon.textContent = '🌙';
+    localStorage.setItem('theme', 'dark');
+  }
+}
+themeToggle.onclick = () => {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  setTheme(isLight ? 'dark' : 'light');
+};
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme === 'light') setTheme('light');
+</script>
+      <!-- TODAY -->
+      <div id="pane-today">
+        <div class="grid-2" style="margin-bottom:24px;">
+          <div class="card">
+            <h3 style="margin-bottom:4px;">Calorie Progress</h3>
+            <div id="cal-summary" style="margin-top:12px;"><div class="loader"></div></div>
+          </div>
+          <div class="card">
+            <h3 style="margin-bottom:4px;">Macro Breakdown</h3>
+            <div class="macro-ring-grid" id="macro-rings"><div class="loader"></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3>Today's Meals</h3>
+            <button class="btn btn-primary btn-sm" onclick="showTab('add')">+ Add Meal</button>
+          </div>
+          <div id="meals-list"><div class="loader"></div></div>
+        </div>
+      </div>
+
+      <!-- ADD MEAL -->
+      <div id="pane-add" style="display:none;">
+        <div class="card">
+          <h2 style="margin-bottom:20px;">➕ Log a Meal</h2>
+          <div class="grid-2" style="gap:12px;">
+            <div class="form-group">
+              <label class="form-label">Food Name</label>
+              <input type="text" id="m-name" class="form-input" placeholder="e.g. Grilled Chicken Breast">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Meal Type</label>
+              <select id="m-type" class="form-select">
+                <option value="breakfast">🌅 Breakfast</option>
+                <option value="lunch">☀️ Lunch</option>
+                <option value="dinner">🌙 Dinner</option>
+                <option value="snack">🍎 Snack</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Calories</label>
+              <input type="number" id="m-cal" class="form-input" placeholder="350" min="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Protein (g)</label>
+              <input type="number" id="m-protein" class="form-input" placeholder="30" min="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Carbs (g)</label>
+              <input type="number" id="m-carbs" class="form-input" placeholder="40" min="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fat (g)</label>
+              <input type="number" id="m-fat" class="form-input" placeholder="12" min="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fiber (g)</label>
+              <input type="number" id="m-fiber" class="form-input" placeholder="5" min="0">
+            </div>
+          </div>
+          <button class="btn btn-primary btn-lg" style="margin-top:20px;" id="add-meal-btn" onclick="addMeal()">✅ Log Meal</button>
+        </div>
+      </div>
+
+      <!-- AI VISION -->
+      <div id="pane-vision" style="display:none;">
+        <div class="card">
+          <h2 style="margin-bottom:8px;">📸 AI Food Vision</h2>
+          <p class="text-muted" style="margin-bottom:20px;font-size:0.88rem;">Snap a photo — Grok AI estimates calories & macros instantly.</p>
+          <div class="upload-zone" id="upload-zone" onclick="document.getElementById('food-img-input').click()">
+            <div style="font-size:3rem;margin-bottom:12px;">📷</div>
+            <div style="font-weight:700;margin-bottom:6px;">Tap to upload food photo</div>
+            <div class="text-muted" style="font-size:0.85rem;">JPG, PNG, WEBP · max 10MB</div>
+            <input type="file" id="food-img-input" accept="image/*" style="display:none;" onchange="analyzeFood(this)">
+          </div>
+          <div id="vision-preview" style="margin-top:20px;"></div>
+        </div>
+      </div>
+
+      <!-- AI DIET PLAN -->
+      <div id="pane-ai" style="display:none;">
+        <div class="card">
+          <h2 style="margin-bottom:8px;">🤖 AI Diet Plan Generator</h2>
+          <p class="text-muted" style="margin-bottom:24px;font-size:0.88rem;">Get a personalized nutrition plan from Grok AI.</p>
+          <div class="grid-2" style="gap:12px;">
+            <div class="form-group">
+              <label class="form-label">Goal</label>
+              <select id="d-goal" class="form-select">
+                <option value="lose weight">🔥 Lose Weight</option>
+                <option value="gain muscle">💪 Gain Muscle</option>
+                <option value="maintain">⚖️ Maintain</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Target Calories</label>
+              <input type="number" id="d-cal" class="form-input" placeholder="2000" min="1000" max="5000">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Meals Per Day</label>
+              <select id="d-meals" class="form-select">
+                <option value="3">3 meals</option>
+                <option value="4">4 meals</option>
+                <option value="5">5 meals</option>
+                <option value="6">6 meals</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Weight (kg)</label>
+              <input type="number" id="d-weight" class="form-input" placeholder="75">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Height (cm)</label>
+              <input type="number" id="d-height" class="form-input" placeholder="175">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Dietary Restrictions</label>
+              <input type="text" id="d-restrict" class="form-input" placeholder="e.g. vegetarian, no gluten">
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:12px;">
+            <label class="form-label">Allergies</label>
+            <input type="text" id="d-allergy" class="form-input" placeholder="e.g. nuts, dairy">
+          </div>
+          <button class="btn btn-primary btn-lg" style="margin-top:20px;" id="diet-ai-btn" onclick="generateDietPlan()">🤖 Generate Diet Plan</button>
+          <div id="diet-plan-preview" style="margin-top:24px;"></div>
+        </div>
+      </div>
+
+      <!-- HISTORY -->
+      <div id="pane-history" style="display:none;">
+        <div class="card">
+          <h2 style="margin-bottom:20px;">📅 Diet History</h2>
+          <div id="diet-history-list"><div class="loader"></div></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+requireAuth();
+let todayLog = null;
+
+async function loadToday() {
+  try {
+    todayLog = await api('GET', '/diet/log/today');
+    renderToday();
+  } catch(e) { toast('Failed to load today', 'error'); }
+}
+
+function renderToday() {
+  const t = todayLog?.totals || {};
+  const g = todayLog?.dailyGoal || { calories:2000, carbs:250, protein:150, fat:65 };
+  const calPct = Math.min(100, Math.round(((t.calories||0)/g.calories)*100));
+  document.getElementById('cal-summary').innerHTML = `
+    <div style="font-size:2rem;font-weight:800;margin-bottom:8px;">${t.calories||0} <span style="font-size:1rem;color:var(--text-muted);">/ ${g.calories} kcal</span></div>
+    <div class="progress-bar-wrap" style="margin-bottom:8px;"><div class="progress-bar green" style="width:${calPct}%"></div></div>
+    <div style="font-size:0.82rem;color:var(--text-muted);">${calPct}% of daily goal · ${todayLog?.meals?.length||0} meals</div>`;
+  document.getElementById('macro-rings').innerHTML = [
+    { label:'Carbs', val:t.carbs||0, goal:g.carbs, color:'var(--accent)' },
+    { label:'Protein', val:t.protein||0, goal:g.protein, color:'var(--green)' },
+    { label:'Fat', val:t.fat||0, goal:g.fat, color:'var(--fire)' },
+  ].map(m => progressRing('ring-'+m.label, Math.min(100,Math.round((m.val/m.goal)*100)), m.color, m.val+'g', m.label)).join('');
+  
+  const meals = todayLog?.meals || [];
+  document.getElementById('meals-list').innerHTML = meals.length ? meals.map(m => `
+    <div class="meal-card">
+      ${m.imageUrl ? `<img src="${m.imageUrl}" class="meal-item-img" alt="${m.name}">` : `<div class="meal-item-img" style="background:var(--bg3);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">🍽️</div>`}
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="font-weight:600;font-size:0.9rem;">${m.name}</span>
+          <span class="meal-type-badge ${m.mealType}">${m.mealType}</span>
+          ${m.aiEstimated ? '<span class="tag" style="font-size:0.7rem;">🤖 AI</span>' : ''}
+        </div>
+        <div style="font-size:0.8rem;color:var(--text-muted);">${m.calories} kcal · P:${m.protein}g · C:${m.carbs}g · F:${m.fat}g</div>
+      </div>
+      <button onclick="deleteMeal('${m._id}')" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1rem;padding:4px;">✕</button>
+    </div>`).join('') : `<div class="empty-state"><div class="icon">🥗</div><p>No meals logged yet — add your first!</p></div>`;
+}
+
+async function addMeal() {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) return toast('Enter food name', 'warning');
+  const btn = document.getElementById('add-meal-btn');
+  btn.disabled=true; btn.textContent='Logging...';
+  try {
+    todayLog = await api('POST', '/diet/log/meal', {
+      name, mealType: document.getElementById('m-type').value,
+      calories: document.getElementById('m-cal').value||0,
+      protein: document.getElementById('m-protein').value||0,
+      carbs: document.getElementById('m-carbs').value||0,
+      fat: document.getElementById('m-fat').value||0,
+      fiber: document.getElementById('m-fiber').value||0
+    });
+    toast('Meal logged! 🥗', 'success');
+    ['m-name','m-cal','m-protein','m-carbs','m-fat','m-fiber'].forEach(id => document.getElementById(id).value='');
+    showTab('today');
+    renderToday();
+  } catch(e) { toast(e.message, 'error'); }
+  finally { btn.disabled=false; btn.textContent='✅ Log Meal'; }
+}
+
+async function deleteMeal(id) {
+  try {
+    todayLog = await api('DELETE', `/diet/log/meal/${id}`);
+    renderToday(); toast('Meal removed', 'info');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function analyzeFood(input) {
+  if (!input.files[0]) return;
+  const prev = document.getElementById('vision-preview');
+  prev.innerHTML = '<div class="loader"></div>';
+  const fd = new FormData(); fd.append('image', input.files[0]);
+  try {
+    const macros = await api('POST', '/ai/food-photo', fd, true);
+    prev.innerHTML = `
+      <div class="card" style="border-color:var(--green);">
+        ${macros.imageUrl ? `<img src="${macros.imageUrl}" style="width:100%;border-radius:var(--radius-sm);margin-bottom:16px;max-height:200px;object-fit:cover;">` : ''}
+        <div style="font-size:1.1rem;font-weight:700;margin-bottom:4px;">🍽️ ${macros.name}</div>
+        <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:16px;">${macros.portionSize} · Confidence: ${macros.confidence}</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center;margin-bottom:16px;">
+          <div><div style="font-weight:800;font-size:1.2rem;">${macros.calories}</div><div style="font-size:0.75rem;color:var(--text-muted);">kcal</div></div>
+          <div><div style="font-weight:800;color:var(--green);">${macros.protein}g</div><div style="font-size:0.75rem;color:var(--text-muted);">Protein</div></div>
+          <div><div style="font-weight:800;color:var(--accent);">${macros.carbs}g</div><div style="font-size:0.75rem;color:var(--text-muted);">Carbs</div></div>
+          <div><div style="font-weight:800;color:var(--fire);">${macros.fat}g</div><div style="font-size:0.75rem;color:var(--text-muted);">Fat</div></div>
+        </div>
+        ${macros.notes ? `<div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:16px;">ℹ️ ${macros.notes}</div>` : ''}
+        <button class="btn btn-green" onclick='addVisionMeal(${JSON.stringify(macros)})'>✅ Add to Today's Log</button>
+      </div>`;
+  } catch(e) { prev.innerHTML=`<div class="card" style="border-color:var(--red);padding:20px;">❌ ${e.message}</div>`; }
+}
+
+async function addVisionMeal(macros) {
+  try {
+    todayLog = await api('POST', '/diet/log/meal', { ...macros, aiEstimated: true });
+    toast('AI meal added! 🤖🥗', 'success');
+    showTab('today'); renderToday();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function generateDietPlan() {
+  const btn = document.getElementById('diet-ai-btn');
+  btn.disabled=true; btn.textContent='🤖 Generating...';
+  document.getElementById('diet-plan-preview').innerHTML='<div class="loader"></div>';
+  try {
+    const plan = await api('POST', '/ai/diet-plan', {
+      goal: document.getElementById('d-goal').value,
+      calories: document.getElementById('d-cal').value||2000,
+      mealsPerDay: document.getElementById('d-meals').value,
+      weight: document.getElementById('d-weight').value||75,
+      height: document.getElementById('d-height').value||175,
+      restrictions: document.getElementById('d-restrict').value||'None',
+      allergies: document.getElementById('d-allergy').value||'None'
+    });
+    const pv = document.getElementById('diet-plan-preview');
+    pv.innerHTML = `
+      <div class="card" style="border-color:var(--green);">
+        <h3 style="margin-bottom:4px;">${plan.title}</h3>
+        <p class="text-muted" style="font-size:0.85rem;margin-bottom:16px;">${plan.description}</p>
+        <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;">
+          <span>🎯 ${plan.dailyCalories} kcal/day</span>
+          <span>🍞 ${plan.macroSplit?.carbs}% carbs</span>
+          <span>💪 ${plan.macroSplit?.protein}% protein</span>
+          <span>🥑 ${plan.macroSplit?.fat}% fat</span>
+        </div>
+        ${plan.meals?.map(m=>`
+          <div style="margin-bottom:14px;padding:14px;background:rgba(255,255,255,0.03);border-radius:var(--radius-sm);border:1px solid var(--card-border);">
+            <div style="font-weight:700;margin-bottom:8px;text-transform:capitalize;">🕐 ${m.mealType} — ${m.name}</div>
+            ${m.foods?.map(f=>`<div style="font-size:0.82rem;color:var(--text-muted);padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);">${f.name} (${f.amount}) — ${f.calories} kcal · P:${f.protein}g · C:${f.carbs}g · F:${f.fat}g</div>`).join('')}
+          </div>`).join('')}
+        <button class="btn btn-green" onclick='saveDietPlan(${JSON.stringify(plan).replace(/'/g,"&#39;")})' style="margin-top:8px;">💾 Save Diet Plan</button>
+      </div>`;
+  } catch(e) { document.getElementById('diet-plan-preview').innerHTML=`<div class="card" style="border-color:var(--red);padding:20px;">❌ ${e.message}</div>`; }
+  btn.disabled=false; btn.textContent='🤖 Generate Diet Plan';
+}
+
+async function saveDietPlan(plan) {
+  try {
+    await api('POST', '/diet/plans', plan);
+    toast('Diet plan saved! 🥗', 'success');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function loadHistory() {
+  try {
+    const logs = await api('GET', '/diet/log/history');
+    document.getElementById('diet-history-list').innerHTML = logs.map(l=>`
+      <div style="padding:14px 0;border-bottom:1px solid var(--card-border);">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-weight:700;">${formatDate(l.date)}</span>
+          <span style="font-weight:700;color:var(--green);">${l.totals?.calories||0} kcal</span>
+        </div>
+        <div style="font-size:0.82rem;color:var(--text-muted);">P:${l.totals?.protein||0}g · C:${l.totals?.carbs||0}g · F:${l.totals?.fat||0}g · ${l.meals?.length||0} meals</div>
+        <div class="progress-bar-wrap" style="margin-top:8px;"><div class="progress-bar green" style="width:${Math.min(100,Math.round(((l.totals?.calories||0)/(l.dailyGoal?.calories||2000))*100))}%"></div></div>
+      </div>`).join('') || '<div class="empty-state"><div class="icon">📅</div><p>No history yet</p></div>';
+  } catch(e) { toast('Failed to load history','error'); }
+}
+
+function showTab(tab) {
+  ['today','add','vision','ai','history'].forEach(t=>{
+    document.getElementById(`pane-${t}`).style.display=t===tab?'block':'none';
+    document.getElementById(`tab-${t}`).classList.toggle('active',t===tab);
+  });
+  if(tab==='history') loadHistory();
+}
+
+loadToday();
+</script>
+</body>
+</html>

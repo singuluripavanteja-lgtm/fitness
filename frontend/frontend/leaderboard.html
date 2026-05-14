@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Leaderboard — fitnesSHARE</title>
+<link rel="stylesheet" href="/css/global.css">
+</head>
+<body>
+<button class="theme-toggle" id="theme-toggle" title="Toggle dark/light mode">
+  <span id="theme-toggle-icon">🌙</span>
+</button>
+<div id="toast-container"></div>
+<nav class="navbar">
+  <a href="/" class="nav-logo" id="logo-link">fitnesSHARE</a>
+  <div class="nav-links">
+    <a href="/dashboard" class="nav-link"> Home</a>
+    <a href="/workout" class="nav-link"> Workout</a>
+    <a href="/diet" class="nav-link"> Diet</a>
+    <a href="/social" class="nav-link"> Social</a>
+    <a href="/ai" class="nav-link"> AI Coach</a>
+    <a href="/leaderboard" class="nav-link active"> Leaderboard</a>
+    <a href="/profile" class="nav-link"> Profile</a>
+    <a href="/auth" class="btn btn-primary btn-sm" id="nav-auth-btn" style="display:none;">Sign In</a>
+  </div>
+</nav>
+<div class="page">
+  <div class="app-layout">
+    <aside class="sidebar">
+      <a href="/dashboard" class="sidebar-link"><span class="icon"></span>Dashboard</a>
+      <a href="/workout" class="sidebar-link"><span class="icon"></span>Workout</a>
+      <a href="/diet" class="sidebar-link"><span class="icon"></span>Diet</a>
+      <a href="/social" class="sidebar-link"><span class="icon"></span>Social Feed</a>
+      <a href="/ai" class="sidebar-link"><span class="icon"></span>AI Coach</a>
+      <a href="/duo" class="sidebar-link"><span class="icon"></span>Duo Streaks</a>
+      <a href="/leaderboard" class="sidebar-link active"><span class="icon"></span>Leaderboard</a>
+      <a href="/profile" class="sidebar-link"><span class="icon"></span>Profile</a>
+    </aside>
+    <main class="main-content">
+      <div style="text-align:center;margin-bottom:40px;">
+        <h1 style="font-size:2rem;">🏆 Leaderboard</h1>
+        <p class="text-muted" style="margin-top:8px;">Top athletes ranked by highest streak ever achieved</p>
+      </div>
+<script>
+// Theme toggle logic
+const themeToggle = document.getElementById('theme-toggle');
+const themeIcon = document.getElementById('theme-toggle-icon');
+function setTheme(theme) {
+  if (theme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    themeIcon.textContent = '☀️';
+    localStorage.setItem('theme', 'light');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    themeIcon.textContent = '🌙';
+    localStorage.setItem('theme', 'dark');
+  }
+}
+themeToggle.onclick = () => {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  setTheme(isLight ? 'dark' : 'light');
+};
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme === 'light') setTheme('light');
+</script>
+      <!-- Podium -->
+      <div id="podium" style="display:flex;justify-content:center;align-items:flex-end;gap:16px;margin-bottom:40px;flex-wrap:wrap;">
+        <div class="loader"></div>
+      </div>
+
+      <!-- Full list -->
+      <div class="card">
+        <h2 style="margin-bottom:20px;">🔥 Full Rankings</h2>
+        <div id="lb-list"><div class="loader"></div></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+const me = getUser();
+if (!me) {
+  document.getElementById('logo-link').href = '/';
+  document.getElementById('nav-auth-btn').style.display = 'inline-flex';
+  document.querySelectorAll('.nav-link').forEach(l => {
+    const h = l.getAttribute('href');
+    if (h !== '/social' && h !== '/leaderboard') l.style.display = 'none';
+  });
+  document.querySelectorAll('.sidebar-link').forEach(l => {
+    const h = l.getAttribute('href');
+    if (h !== '/social' && h !== '/leaderboard') l.style.display = 'none';
+  });
+} else {
+  document.getElementById('logo-link').href = '/dashboard';
+}
+
+async function loadLeaderboard() {
+  try {
+    const users = await api('GET', '/users/leaderboard');
+    const top3 = users.slice(0, 3);
+    const rest = users.slice(3);
+    const podiumOrder = top3.length >= 3 ? [top3[1], top3[0], top3[2]] : top3;
+    const heights = ['100px', '140px', '80px'];
+    const medals = ['🥈', '🥇', '🥉'];
+    const colors = ['rgba(192,192,192,0.15)', 'rgba(255,215,0,0.15)', 'rgba(205,127,50,0.15)'];
+
+    document.getElementById('podium').innerHTML = podiumOrder.map((u, i) => `
+      <a href="/profile?id=${u._id}" style="text-decoration:none;color:var(--text);text-align:center;width:160px;">
+        <div style="margin-bottom:12px;">
+          ${avatarHTML(u, 60)}
+          <div style="font-weight:700;margin-top:8px;font-size:0.95rem;">${u.username}</div>
+          <div style="font-size:0.8rem;color:var(--fire);">🔥 ${u.highestStreak} days</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);">${u.milestonesAchieved?.length||0} milestones</div>
+        </div>
+        <div style="height:${heights[i]};background:${colors[i]};border:1px solid var(--card-border);border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:center;font-size:1.8rem;">${medals[i]}</div>
+      </a>`).join('');
+
+    document.getElementById('lb-list').innerHTML = users.map((u, i) => `
+      <a href="/profile?id=${u._id}" class="leaderboard-item" style="margin-bottom:8px;text-decoration:none;">
+        <div class="leaderboard-rank ${i<3?'top':''}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</div>
+        ${avatarHTML(u, 40)}
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;">${u.username}</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);">${u.bio?.substring(0,60)||'No bio'}</div>
+          ${u.milestonesAchieved?.length ? `<div style="margin-top:4px;">${u.milestonesAchieved.slice(0,2).map(m=>`<span class="milestone-badge" style="font-size:0.7rem;">${m}</span>`).join(' ')}</div>` : ''}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:1.2rem;font-weight:800;color:var(--fire);">🔥 ${u.highestStreak}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);">Current: ${u.currentStreak}</div>
+        </div>
+      </a>`).join('') || `<div class="empty-state"><div class="icon">🏆</div><p>No users yet. Be the first!</p></div>`;
+  } catch(e) { toast('Failed to load leaderboard', 'error'); }
+}
+
+loadLeaderboard();
+</script>
+</body>
+</html>
