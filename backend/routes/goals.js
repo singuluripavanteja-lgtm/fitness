@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 const User = require('../models/User');
 
 // @route   GET api/goals
 // @desc    Get all user goals
-router.get('/', auth, async (req, res) => {
+router.get('/', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('goals');
     res.json(user.goals);
@@ -17,7 +17,7 @@ router.get('/', auth, async (req, res) => {
 
 // @route   POST api/goals
 // @desc    Create a new goal
-router.post('/', auth, async (req, res) => {
+router.post('/', protect, async (req, res) => {
   const { title, targetValue, unit, deadline, milestones } = req.body;
   try {
     const user = await User.findById(req.user.id);
@@ -39,7 +39,7 @@ router.post('/', auth, async (req, res) => {
 
 // @route   PUT api/goals/:id
 // @desc    Update goal progress or status
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', protect, async (req, res) => {
   const { currentValue, status, milestones } = req.body;
   try {
     const user = await User.findById(req.user.id);
@@ -67,7 +67,7 @@ router.put('/:id', auth, async (req, res) => {
 
 // @route   DELETE api/goals/:id
 // @desc    Delete a goal
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     user.goals.pull({ _id: req.params.id });

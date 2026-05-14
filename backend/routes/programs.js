@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 const WorkoutProgram = require('../models/WorkoutProgram');
 const User = require('../models/User');
 
 // @route   GET api/programs
 // @desc    Get all workout programs
-router.get('/', auth, async (req, res) => {
+router.get('/', protect, async (req, res) => {
   try {
     const programs = await WorkoutProgram.find();
     res.json(programs);
@@ -18,7 +18,7 @@ router.get('/', auth, async (req, res) => {
 
 // @route   POST api/programs/enroll/:id
 // @desc    Enroll in a program
-router.post('/enroll/:id', auth, async (req, res) => {
+router.post('/enroll/:id', protect, async (req, res) => {
   try {
     const program = await WorkoutProgram.findById(req.params.id);
     if (!program) return res.status(404).json({ msg: 'Program not found' });
@@ -44,7 +44,7 @@ router.post('/enroll/:id', auth, async (req, res) => {
 
 // @route   GET api/programs/my-program
 // @desc    Get current enrolled program
-router.get('/my-program', auth, async (req, res) => {
+router.get('/my-program', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).populate('activeWorkoutPlan');
     res.json(user.activeWorkoutPlan);

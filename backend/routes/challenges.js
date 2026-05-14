@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 const Challenge = require('../models/Challenge');
 const User = require('../models/User');
 
 // @route   GET api/challenges
 // @desc    Get all active challenges
-router.get('/', auth, async (req, res) => {
+router.get('/', protect, async (req, res) => {
   try {
     const challenges = await Challenge.find({ endDate: { $gte: new Date() } });
     res.json(challenges);
@@ -18,7 +18,7 @@ router.get('/', auth, async (req, res) => {
 
 // @route   POST api/challenges/join/:id
 // @desc    Join a challenge
-router.post('/join/:id', auth, async (req, res) => {
+router.post('/join/:id', protect, async (req, res) => {
   try {
     const challenge = await Challenge.findById(req.params.id);
     if (!challenge) return res.status(404).json({ msg: 'Challenge not found' });
@@ -37,7 +37,7 @@ router.post('/join/:id', auth, async (req, res) => {
 
 // @route   PUT api/challenges/progress/:id
 // @desc    Update challenge progress
-router.put('/progress/:id', auth, async (req, res) => {
+router.put('/progress/:id', protect, async (req, res) => {
   const { progress } = req.body;
   try {
     const challenge = await Challenge.findById(req.params.id);
@@ -57,7 +57,7 @@ router.put('/progress/:id', auth, async (req, res) => {
 
 // @route   GET api/challenges/leaderboard/:id
 // @desc    Get challenge leaderboard
-router.get('/leaderboard/:id', auth, async (req, res) => {
+router.get('/leaderboard/:id', protect, async (req, res) => {
   try {
     const challenge = await Challenge.findById(req.params.id)
       .populate('participants.user', 'username avatar');

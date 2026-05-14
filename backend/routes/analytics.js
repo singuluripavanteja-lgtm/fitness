@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 const WorkoutLog = require('../models/WorkoutLog');
 const DietLog = require('../models/DietLog');
 const User = require('../models/User');
 
 // @route   GET api/analytics/trends
 // @desc    Get workout and diet trends over time
-router.get('/trends', auth, async (req, res) => {
+router.get('/trends', protect, async (req, res) => {
   try {
     const workouts = await WorkoutLog.find({ user: req.user.id }).sort({ date: 1 });
     const diet = await DietLog.find({ user: req.user.id }).sort({ date: 1 });
@@ -21,7 +21,7 @@ router.get('/trends', auth, async (req, res) => {
 
 // @route   GET api/analytics/metrics
 // @desc    Get user body metrics over time
-router.get('/metrics', auth, async (req, res) => {
+router.get('/metrics', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('metrics');
     res.json(user.metrics);
@@ -33,7 +33,7 @@ router.get('/metrics', auth, async (req, res) => {
 
 // @route   POST api/analytics/metrics
 // @desc    Add a new body metric
-router.post('/metrics', auth, async (req, res) => {
+router.post('/metrics', protect, async (req, res) => {
   const { type, value, unit } = req.body;
   try {
     const user = await User.findById(req.user.id);
@@ -48,7 +48,7 @@ router.post('/metrics', auth, async (req, res) => {
 
 // @route   GET api/analytics/comparison
 // @desc    Compare progress month-over-month
-router.get('/comparison', auth, async (req, res) => {
+router.get('/comparison', protect, async (req, res) => {
   try {
     const now = new Date();
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);

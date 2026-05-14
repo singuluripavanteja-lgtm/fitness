@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 const Notification = require('../models/Notification');
 
 // @route   GET api/notifications
 // @desc    Get all notifications for user
-router.get('/', auth, async (req, res) => {
+router.get('/', protect, async (req, res) => {
   try {
     const notifications = await Notification.find({ recipient: req.user.id })
       .sort({ createdAt: -1 })
@@ -19,7 +19,7 @@ router.get('/', auth, async (req, res) => {
 
 // @route   PUT api/notifications/read/:id
 // @desc    Mark notification as read
-router.put('/read/:id', auth, async (req, res) => {
+router.put('/read/:id', protect, async (req, res) => {
   try {
     const notification = await Notification.findById(req.params.id);
     if (!notification) return res.status(404).json({ msg: 'Notification not found' });
@@ -39,7 +39,7 @@ router.put('/read/:id', auth, async (req, res) => {
 
 // @route   PUT api/notifications/read-all
 // @desc    Mark all notifications as read
-router.put('/read-all', auth, async (req, res) => {
+router.put('/read-all', protect, async (req, res) => {
   try {
     await Notification.updateMany({ recipient: req.user.id }, { isRead: true });
     res.json({ msg: 'All notifications marked as read' });
