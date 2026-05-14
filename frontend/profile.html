@@ -265,13 +265,35 @@ async function loadProfile() {
       prCont.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><p>No personal records yet.</p></div>';
     }
     
-    // Load Milestones
+    // Load Milestones / Badges
     const mCont = document.getElementById('milestones-list');
-    if (user.milestonesAchieved?.length) {
-      mCont.innerHTML = user.milestonesAchieved.map(m => `<span class="milestone-badge" style="padding:10px 18px; font-size:0.9rem;">${m}</span>`).join('');
-    } else {
-      mCont.innerHTML = '<div class="empty-state"><p>No milestones achieved yet.</p></div>';
+    let awardsHtml = '';
+    
+    if (user.badges?.length) {
+      awardsHtml += user.badges.map(b => `
+        <div class="stat-card" style="text-align:center; padding:15px; width:100px;">
+          <div style="font-size:2rem; margin-bottom:5px;">${b.icon}</div>
+          <div style="font-size:0.75rem; font-weight:700;">${b.name}</div>
+        </div>
+      `).join('');
     }
+    
+    if (user.milestonesAchieved?.length) {
+      awardsHtml += user.milestonesAchieved.map(m => `<span class="milestone-badge" style="padding:10px 18px; font-size:0.9rem;">${m}</span>`).join('');
+    }
+
+    if (!awardsHtml) {
+      mCont.innerHTML = '<div class="empty-state"><p>No awards earned yet. Keep training!</p></div>';
+    } else {
+      mCont.innerHTML = awardsHtml;
+    }
+
+    // Add XP/Level to profile header
+    const statsRow = document.querySelector('.profile-stats-row');
+    const levelItem = document.createElement('div');
+    levelItem.className = 'profile-stat-item';
+    levelItem.innerHTML = `<span class="profile-stat-val">Lvl ${user.level || 1}</span><span class="profile-stat-lbl">level</span>`;
+    statsRow.appendChild(levelItem);
     
     // Load Posts
     loadUserPosts();

@@ -135,12 +135,22 @@ router.post('/log', protect, async (req, res) => {
       }
     }
 
+    // Estimate calories (simple formula)
+    const intensityFactor = mood === 'great' ? 8 : mood === 'good' ? 6 : 4;
+    const caloriesBurned = Math.round((duration || 0) * intensityFactor);
+    
+    // Check for achievements
+    const { checkAchievements } = require('../utils/achievements');
+    const unlocked = await checkAchievements(req.user._id, 'workout_complete');
+
     res.status(201).json({
       log,
+      caloriesBurned,
       currentStreak: updatedUser?.currentStreak,
       highestStreak: updatedUser?.highestStreak,
       newMilestones: updatedUser?.milestonesAchieved,
-      plateausDetected: plateaus
+      plateausDetected: plateaus,
+      unlockedBadges: unlocked
     });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });

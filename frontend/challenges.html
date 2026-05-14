@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Community Challenges — fitnesSHARE</title>
+  <link rel="stylesheet" href="/css/global.css">
+  <style>
+    .challenge-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 24px;
+      position: relative;
+    }
+    .challenge-badge {
+      position: absolute;
+      top: -10px;
+      right: 20px;
+      background: var(--primary);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .leaderboard-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    .leaderboard-table th { text-align: left; padding: 12px; color: var(--text-muted); font-size: 0.85rem; }
+    .leaderboard-table td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .rank-circle {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800;
+    }
+    .rank-1 { background: #ffd700; color: #000; }
+    .rank-2 { background: #c0c0c0; color: #000; }
+    .rank-3 { background: #cd7f32; color: #000; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/dashboard" class="nav-logo">fitnesSHARE</a>
+    <div class="nav-links">
+      <a href="/dashboard" class="nav-link"> Home</a>
+      <a href="/workout" class="nav-link"> Workout</a>
+      <a href="/social" class="nav-link"> Social</a>
+      <a href="/ai" class="nav-link"> AI Coach</a>
+    </div>
+  </nav>
+
+  <div class="page">
+    <div class="app-layout">
+      <aside class="sidebar">
+        <a href="/dashboard" class="sidebar-link"><span class="icon">🏠</span>Dashboard</a>
+        <a href="/challenges" class="sidebar-link active"><span class="icon">🏆</span>Challenges</a>
+        <a href="/leaderboard" class="sidebar-link"><span class="icon">🥇</span>Leaderboard</a>
+        <a href="/social" class="sidebar-link"><span class="icon">📱</span>Social Feed</a>
+      </aside>
+
+      <main class="main-content">
+        <div class="section-header">
+          <h1>Community Challenges</h1>
+        </div>
+
+        <div id="active-challenges">
+          <!-- Active Challenge Card -->
+          <div class="challenge-card">
+            <div class="challenge-badge">GLOBAL CHALLENGE</div>
+            <div class="grid-2">
+              <div>
+                <h2 style="font-size:1.8rem; font-weight:900;">May 100K Steps Blast</h2>
+                <p class="text-muted" style="margin-bottom:20px;">Walk 100,000 steps this month to earn the "May Marathoner" badge and 500 XP!</p>
+                <div style="display:flex; gap:20px; margin-bottom:20px;">
+                  <div><div style="font-size:0.8rem; color:var(--text-muted);">ENDS IN</div><div style="font-weight:800; font-size:1.2rem;">12 Days</div></div>
+                  <div><div style="font-size:0.8rem; color:var(--text-muted);">PARTICIPANTS</div><div style="font-weight:800; font-size:1.2rem;">1,248</div></div>
+                </div>
+                <button class="btn btn-primary">Join Challenge</button>
+              </div>
+              <div class="card" style="background:rgba(255,255,255,0.03);">
+                <h3>Live Leaderboard</h3>
+                <table class="leaderboard-table">
+                  <thead><tr><th>Rank</th><th>Athlete</th><th>Progress</th></tr></thead>
+                  <tbody>
+                    <tr><td><div class="rank-circle rank-1">1</div></td><td>fit_king</td><td>92,400</td></tr>
+                    <tr><td><div class="rank-circle rank-2">2</div></td><td>sarah_runs</td><td>88,120</td></tr>
+                    <tr><td><div class="rank-circle rank-3">3</div></td><td>gym_rat_99</td><td>84,500</td></tr>
+                    <tr><td><div class="rank-circle">4</div></td><td>alex_v</td><td>81,200</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <h3>Upcoming Challenges</h3>
+        <div class="grid-2" style="margin-top:20px;">
+          <div class="card">
+            <h4>June 30-Day Workout Streak</h4>
+            <p class="text-muted">Log at least one workout every day in June.</p>
+            <div style="margin-top:15px; font-size:0.85rem;">Starts June 1st</div>
+          </div>
+          <div class="card">
+            <h4>Plank Master 2026</h4>
+            <p class="text-muted">Accumulate 60 minutes of planking time.</p>
+            <div style="margin-top:15px; font-size:0.85rem;">Starts June 15th</div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    requireAuth();
+    // Logic for loading challenges and leaderboard would go here
+  </script>
+</body>
+</html>

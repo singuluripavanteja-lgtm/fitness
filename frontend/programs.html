@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Workout Programs — fitnesSHARE</title>
+  <link rel="stylesheet" href="/css/global.css">
+  <style>
+    .program-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 25px;
+      margin-top: 20px;
+    }
+    .program-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: var(--transition);
+      display: flex;
+      flex-direction: column;
+    }
+    .program-card:hover { transform: translateY(-5px); border-color: var(--primary); }
+    .program-image {
+      height: 180px;
+      background: linear-gradient(45deg, var(--primary), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+    }
+    .program-body { padding: 20px; flex: 1; display: flex; flex-direction: column; }
+    .program-difficulty {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .diff-beginner { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+    .diff-intermediate { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+    .diff-advanced { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    
+    .program-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 10px; }
+    .program-desc { font-size: 0.95rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; }
+    .program-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: auto;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/dashboard" class="nav-logo">fitnesSHARE</a>
+    <div class="nav-links">
+      <a href="/dashboard" class="nav-link"> Home</a>
+      <a href="/workout" class="nav-link"> Workout</a>
+      <a href="/diet" class="nav-link"> Diet</a>
+      <a href="/social" class="nav-link"> Social</a>
+      <a href="/ai" class="nav-link"> AI Coach</a>
+      <a href="/profile" class="nav-link" id="nav-avatar-link"> Profile</a>
+    </div>
+  </nav>
+
+  <div class="page">
+    <div class="app-layout">
+      <aside class="sidebar">
+        <a href="/dashboard" class="sidebar-link"><span class="icon">🏠</span>Dashboard</a>
+        <a href="/programs" class="sidebar-link active"><span class="icon">📋</span>Programs</a>
+        <a href="/workout" class="sidebar-link"><span class="icon">💪</span>Workout</a>
+        <a href="/diet" class="sidebar-link"><span class="icon">🥗</span>Diet</a>
+        <a href="/social" class="sidebar-link"><span class="icon">📱</span>Social Feed</a>
+        <a href="/challenges" class="sidebar-link"><span class="icon">🏆</span>Challenges</a>
+      </aside>
+
+      <main class="main-content">
+        <div class="section-header">
+          <h1>Workout Programs</h1>
+          <div class="filter-group">
+            <button class="btn btn-outline btn-sm active">All</button>
+            <button class="btn btn-outline btn-sm">Strength</button>
+            <button class="btn btn-outline btn-sm">Cardio</button>
+          </div>
+        </div>
+
+        <div id="programs-list" class="program-grid">
+          <div class="loader"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    requireAuth();
+
+    async function loadPrograms() {
+      try {
+        const programs = await api('GET', '/programs');
+        const list = document.getElementById('programs-list');
+        
+        if (programs.length === 0) {
+            // Mock programs if none in DB
+            const mocks = [
+                { _id: '1', title: 'Beginner Strength', description: '4-week foundational program for new lifters.', difficulty: 'beginner', durationWeeks: 4, category: 'strength' },
+                { _id: '2', title: 'Weight Loss HIIT', description: 'High intensity cardio to blast fat fast.', difficulty: 'intermediate', durationWeeks: 4, category: 'weightLoss' },
+                { _id: '3', title: 'Powerlifting Pro', description: 'Advanced program focused on SBD 1RMs.', difficulty: 'advanced', durationWeeks: 12, category: 'strength' }
+            ];
+            renderPrograms(mocks);
+            return;
+        }
+
+        renderPrograms(programs);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function renderPrograms(programs) {
+        const list = document.getElementById('programs-list');
+        list.innerHTML = programs.map(p => `
+            <div class="program-card">
+              <div class="program-image">
+                ${p.category === 'strength' ? '🏋️' : p.category === 'cardio' ? '🏃' : '🔥'}
+              </div>
+              <div class="program-body">
+                <span class="program-difficulty diff-${p.difficulty}">${p.difficulty}</span>
+                <div class="program-title">${p.title}</div>
+                <div class="program-desc">${p.description}</div>
+                <div class="program-meta">
+                  <span style="font-size:0.9rem; color:var(--text-muted);">⏱️ ${p.durationWeeks} Weeks</span>
+                  <button onclick="enrollInProgram('${p._id}')" class="btn btn-primary btn-sm">Join Program</button>
+                </div>
+              </div>
+            </div>
+        `).join('');
+    }
+
+    async function enrollInProgram(id) {
+        try {
+            await api('POST', `/programs/enroll/${id}`);
+            showToast('Enrolled in program!', 'success');
+            window.location.href = '/workout';
+        } catch (err) {
+            showToast('Enrollment failed', 'error');
+        }
+    }
+
+    loadPrograms();
+  </script>
+</body>
+</html>

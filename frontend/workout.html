@@ -41,14 +41,19 @@
 <div class="page">
   <div class="app-layout">
     <aside class="sidebar">
-      <a href="/dashboard" class="sidebar-link"><span class="icon"></span>Dashboard</a>
-      <a href="/workout" class="sidebar-link active"><span class="icon"></span>Workout</a>
-      <a href="/diet" class="sidebar-link"><span class="icon"></span>Diet</a>
-      <a href="/social" class="sidebar-link"><span class="icon"></span>Social Feed</a>
-      <a href="/ai" class="sidebar-link"><span class="icon"></span>AI Coach</a>
-      <a href="/duo" class="sidebar-link"><span class="icon"></span>Duo Streaks</a>
-      <a href="/leaderboard" class="sidebar-link"><span class="icon"></span>Leaderboard</a>
-      <a href="/profile" class="sidebar-link"><span class="icon"></span>Profile</a>
+      <a href="/dashboard" class="sidebar-link"><span class="icon">🏠</span>Dashboard</a>
+      <a href="/analytics" class="sidebar-link"><span class="icon">📊</span>Analytics</a>
+      <a href="/goals" class="sidebar-link"><span class="icon">🎯</span>Goals</a>
+      <a href="/calendar" class="sidebar-link"><span class="icon">📅</span>Calendar</a>
+      <a href="/workout" class="sidebar-link active"><span class="icon">💪</span>Workout</a>
+      <a href="/programs" class="sidebar-link"><span class="icon">📋</span>Programs</a>
+      <a href="/diet" class="sidebar-link"><span class="icon">🥗</span>Diet</a>
+      <a href="/social" class="sidebar-link"><span class="icon">📱</span>Social Feed</a>
+      <a href="/challenges" class="sidebar-link"><span class="icon">🏆</span>Challenges</a>
+      <a href="/ai" class="sidebar-link"><span class="icon">🤖</span>AI Coach</a>
+      <a href="/duo" class="sidebar-link"><span class="icon">👥</span>Duo Streaks</a>
+      <a href="/leaderboard" class="sidebar-link"><span class="icon">🥇</span>Leaderboard</a>
+      <a href="/profile" class="sidebar-link"><span class="icon">👤</span>Profile</a>
     </aside>
 <script>
 // Theme toggle logic
@@ -87,6 +92,8 @@ if (savedTheme === 'light') setTheme('light');
         <button class="tab-btn active" id="tab-plans" onclick="showTab('plans')">📋 My Plans</button>
         <button class="tab-btn" id="tab-log" onclick="showTab('log')">+ Log Session</button>
         <button class="tab-btn" id="tab-ai" onclick="showTab('ai')">🤖 AI Generate</button>
+        <button class="tab-btn" id="tab-form" onclick="showTab('form')">🎥 Form Check</button>
+        <button class="tab-btn" id="tab-recovery" onclick="showTab('recovery')">🧘 Recovery</button>
         <button class="tab-btn" id="tab-history" onclick="showTab('history')">📊 History</button>
         <button class="tab-btn" id="tab-public" onclick="showTab('public')">🌐 Community Plans</button>
       </div>
@@ -204,6 +211,56 @@ if (savedTheme === 'light') setTheme('light');
             🤖 Generate My Plan
           </button>
           <div id="ai-plan-preview" style="margin-top:24px;"></div>
+        </div>
+      </div>
+
+      <!-- FORM CHECK TAB -->
+      <div id="pane-form" style="display:none;">
+        <div class="card">
+          <h2 style="margin-bottom:8px;">🎥 AI Form Checking</h2>
+          <p class="text-muted" style="margin-bottom:24px;">Upload a video of your set, and our AI will analyze your range of motion and posture.</p>
+          <div style="border:2px dashed var(--card-border); padding:60px; text-align:center; border-radius:var(--radius-lg); cursor:pointer;" onclick="document.getElementById('form-video').click()">
+            <div style="font-size:3rem; margin-bottom:15px;">📤</div>
+            <p style="font-weight:700;">Drop your video here or click to browse</p>
+            <p class="text-muted" style="font-size:0.8rem; margin-top:5px;">Supports MP4, MOV up to 50MB</p>
+            <input type="file" id="form-video" style="display:none;" accept="video/*" onchange="analyzeForm()">
+          </div>
+          <div id="form-analysis-result" style="margin-top:24px;"></div>
+        </div>
+      </div>
+
+      <!-- RECOVERY TAB -->
+      <div id="pane-recovery" style="display:none;">
+        <div class="grid-2">
+          <div class="card">
+            <h3>🧘 Recovery Score</h3>
+            <div style="display:flex; align-items:center; gap:20px; margin-top:15px;">
+                <div style="width:100px; height:100px; border-radius:50%; border:8px solid var(--primary); display:flex; align-items:center; justify-content:center; font-size:1.5rem; font-weight:900; color:var(--primary-light);">82%</div>
+                <div>
+                    <div style="font-weight:700;">You are ready to train!</div>
+                    <p class="text-muted" style="font-size:0.85rem;">Based on your sleep, workout intensity, and mood logs.</p>
+                </div>
+            </div>
+            <div style="margin-top:24px;">
+                <h4 style="margin-bottom:10px;">Recovery Tips</h4>
+                <ul class="text-muted" style="font-size:0.9rem; padding-left:20px;">
+                    <li>Focus on hydration (2.5L+ today)</li>
+                    <li>Try a 10-min active recovery walk</li>
+                    <li>Foam roll your quads for 5 mins</li>
+                </ul>
+            </div>
+          </div>
+          <div class="card">
+            <h3>⚡ Muscle Soreness Map</h3>
+            <div style="text-align:center; padding:20px;">
+                <div style="font-size:4rem;">👤</div>
+                <div style="display:flex; justify-content:center; gap:10px; margin-top:15px;">
+                    <span class="tag" style="background:var(--red);">Quads (High)</span>
+                    <span class="tag" style="background:var(--yellow); color:black;">Back (Mild)</span>
+                    <span class="tag" style="background:var(--green);">Arms (Fresh)</span>
+                </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -687,8 +744,33 @@ async function clonePlan(planId) {
   } catch(e) { toast(e.message, 'error'); }
 }
 
+async function analyzeForm() {
+  const result = document.getElementById('form-analysis-result');
+  result.innerHTML = '<div class="loader"></div><p style="text-align:center; margin-top:10px;">AI is analyzing your movement...</p>';
+  
+  // Mock delay
+  setTimeout(() => {
+    result.innerHTML = `
+      <div class="card" style="border-color:var(--green); background:rgba(16,185,129,0.05);">
+        <h3 style="color:var(--green);">✅ Form Analysis Complete</h3>
+        <div class="grid-2" style="margin-top:15px; gap:20px;">
+            <div>
+                <p><strong>Exercise:</strong> Barbell Squat</p>
+                <p><strong>Rep Count:</strong> 8 Reps</p>
+                <p><strong>Average Depth:</strong> Parallel (Good)</p>
+            </div>
+            <div>
+                <p><strong>Feedback:</strong> Your balance is excellent. Try to keep your chest up slightly more on the last 2 reps. Knees are tracking perfectly over toes.</p>
+            </div>
+        </div>
+      </div>
+    `;
+    toast('Analysis complete!', 'success');
+  }, 3000);
+}
+
 function showTab(tab) {
-  ['plans','log','ai','history','public'].forEach(t => {
+  ['plans','log','ai','form','recovery','history','public'].forEach(t => {
     document.getElementById(`pane-${t}`).style.display = t === tab ? 'block' : 'none';
     document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
   });

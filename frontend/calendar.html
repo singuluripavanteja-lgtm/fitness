@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Workout Calendar — fitnesSHARE</title>
+  <link rel="stylesheet" href="/css/global.css">
+  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+  <style>
+    .calendar-container {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    #calendar { height: 700px; }
+    .fc-theme-standard td, .fc-theme-standard th { border-color: rgba(255,255,255,0.1); }
+    .fc-day-today { background: rgba(124, 58, 237, 0.1) !important; }
+    
+    .heatmap-container {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 20px;
+      border-radius: var(--radius-lg);
+      overflow-x: auto;
+    }
+    .heatmap {
+      display: grid;
+      grid-template-columns: repeat(53, 1fr);
+      grid-template-rows: repeat(7, 1fr);
+      gap: 3px;
+      width: max-content;
+    }
+    .heatmap-day {
+      width: 12px; height: 12px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.05);
+    }
+    .level-1 { background: #2d1b4d; }
+    .level-2 { background: #4c2889; }
+    .level-3 { background: #7c3aed; }
+    .level-4 { background: #a78bfa; }
+
+    .event-details-modal {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.8); display: none; z-index: 1000;
+        align-items: center; justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/dashboard" class="nav-logo">fitnesSHARE</a>
+    <div class="nav-links">
+      <a href="/dashboard" class="nav-link"> Home</a>
+      <a href="/workout" class="nav-link"> Workout</a>
+      <a href="/analytics" class="nav-link"> Analytics</a>
+    </div>
+  </nav>
+
+  <div class="page">
+    <div class="app-layout">
+      <aside class="sidebar">
+        <a href="/dashboard" class="sidebar-link"><span class="icon">🏠</span>Dashboard</a>
+        <a href="/calendar" class="sidebar-link active"><span class="icon">📅</span>Calendar</a>
+        <a href="/workout" class="sidebar-link"><span class="icon">💪</span>Workout</a>
+        <a href="/social" class="sidebar-link"><span class="icon">📱</span>Social Feed</a>
+      </aside>
+
+      <main class="main-content">
+        <div class="section-header">
+          <h1>Activity Calendar</h1>
+        </div>
+
+        <div class="heatmap-container" style="margin-bottom:24px;">
+          <h3>Annual Activity Heatmap</h3>
+          <div id="heatmap" class="heatmap" style="margin-top:15px;"></div>
+          <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:10px; font-size:0.7rem; color:var(--text-muted);">
+            <span>Less</span>
+            <div class="heatmap-day"></div>
+            <div class="heatmap-day level-1"></div>
+            <div class="heatmap-day level-2"></div>
+            <div class="heatmap-day level-3"></div>
+            <div class="heatmap-day level-4"></div>
+            <span>More</span>
+          </div>
+        </div>
+
+        <div class="calendar-container">
+          <div id="calendar"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="event-modal" class="event-details-modal" onclick="this.style.display='none'">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h2 id="modal-title">Workout Details</h2>
+        <div id="modal-body" style="margin-top:15px;"></div>
+        <button class="btn btn-outline btn-block" style="margin-top:20px;" onclick="document.getElementById('event-modal').style.display='none'">Close</button>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    requireAuth();
+
+    async function initCalendar() {
+      const logs = await api('GET', '/workout/logs?limit=100');
+      
+      const calendarEl = document.getElementById('calendar');
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        themeSystem: 'standard',
+        events: logs.map(l => ({
+          title: l.dayName || 'Workout',
+          start: l.date,
+          color: l.progressPercent === 100 ? '#10b981' : '#7c3aed',
+          extendedProps: { ...l }
+        })),
+        eventClick: function(info) {
+          showEventDetails(info.event.extendedProps);
+        }
+      });
+      calendar.render();
+
+      renderHeatmap(logs);
+    }
+
+    function renderHeatmap(logs) {
+      const heatmap = document.getElementById('heatmap');
+      const today = new Date();
+      const startYear = new Date(today.getFullYear(), 0, 1);
+      
+      // Map logs to date strings
+      const logDates = logs.reduce((acc, log) => {
+        const dateStr = new Date(log.date).toDateString();
+        acc[dateStr] = (acc[dateStr] || 0) + 1;
+        return acc;
+      }, {});
+
+      for (let i = 0; i < 371; i++) {
+        const d = new Date(startYear);
+        d.setDate(d.getDate() + i);
+        
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'heatmap-day';
+        const dateStr = d.toDateString();
+        
+        if (logDates[dateStr]) {
+          const count = logDates[dateStr];
+          dayDiv.className += ` level-${Math.min(4, count)}`;
+          dayDiv.title = `${dateStr}: ${count} workout(s)`;
+        }
+        
+        heatmap.appendChild(dayDiv);
+      }
+    }
+
+    function showEventDetails(log) {
+        const modal = document.getElementById('event-modal');
+        const body = document.getElementById('modal-body');
+        const title = document.getElementById('modal-title');
+
+        title.textContent = log.dayName || 'Workout Session';
+        body.innerHTML = `
+            <div style="font-size:1.1rem; margin-bottom:10px;"><b>Date:</b> ${new Date(log.date).toLocaleDateString()}</div>
+            <div style="font-size:1.1rem; margin-bottom:10px;"><b>Progress:</b> ${log.progressPercent}%</div>
+            <div style="font-size:1.1rem; margin-bottom:10px;"><b>Duration:</b> ${log.duration || 0} mins</div>
+            <div style="font-size:1.1rem; margin-bottom:10px;"><b>Mood:</b> ${log.mood || 'N/A'}</div>
+            <div style="margin-top:15px;">
+                <b>Exercises:</b>
+                <ul style="margin-top:10px; padding-left:20px;">
+                    ${log.exercises.map(ex => `<li>${ex.name}: ${ex.completedSets} sets</li>`).join('')}
+                </ul>
+            </div>
+            ${log.notes ? `<div style="margin-top:15px;"><b>Notes:</b><br>${log.notes}</div>` : ''}
+        `;
+        modal.style.display = 'flex';
+    }
+
+    initCalendar();
+  </script>
+</body>
+</html>

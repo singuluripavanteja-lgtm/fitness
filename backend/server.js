@@ -76,6 +76,11 @@ app.use('/api/diet', dietRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/posts', socialRoutes);
 app.use('/api/duo', duoRoutes);
+app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/goals', require('./routes/goals'));
+app.use('/api/challenges', require('./routes/challenges'));
+app.use('/api/programs', require('./routes/programs'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Serve frontend for all non-API routes
 
